@@ -166,7 +166,7 @@ Otras operaciones: `cambiarQuantum(int)` (aplica en el próximo despacho),
 ### `Bitacora` / `EventoBitacora` (record)
 
 `int instante`, `String idProceso`, `EstadoProceso origen`, `EstadoProceso destino`,
-`String motivo` (p. ej. "Llegada", "Memoria asignada [70–94]", "Quantum agotado",
+`String motivo` (p. ej. "Llegada", "Memoria asignada [70–94]", "Despacho", "Quantum agotado",
 "Solicita E/S (3 ticks)", "Fin de E/S", "Ráfaga completada", "Sin memoria contigua suficiente").
 
 ### `TramoGantt` (record)
@@ -191,7 +191,8 @@ reloj, `velocidadMs` (50–2000, defecto 500) y un `Supplier<Escenario>` para re
 
 ### `Instantanea` (records inmutables)
 
-Ver la forma JSON exacta en `contracts/api-http.md` (`GET /api/estado`). `Motor.instantanea()`
+Ver la forma JSON exacta en `contracts/api-http.md` (`GET /api/estado`). Cada `ResumenProceso` incluye
+`bloqueante` y `ticksRestantesES`, para que la CLI no dependa de las colas. `Motor.instantanea()`
 produce la parte del motor con `modo`, `velocidadMs` y `aviso` neutros; `ControladorSimulacion`
 la completa con `Instantanea.con(modo, velocidadMs, aviso)`. Incluye: instante, modo,
 configuración vigente, colas, proceso en CPU, procesos (resumen), mapa de memoria con métricas de

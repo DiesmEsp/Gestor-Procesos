@@ -44,11 +44,14 @@ JDK `21.0.10` LTS instalado; **no** hay Maven ni Gradle disponibles.
 
 ## 5. Actualización del dashboard
 
-- **Decisión**: sondeo con `fetch` a `GET /api/estado` cada 200 ms (y en cada acción del usuario).
-  La instantánea incluye la bitácora completa y el Gantt compactado en tramos.
-- **Justificación**: cumple FR-023/SC-004 (< 1 s) sin bibliotecas. Con 50 procesos la instantánea
-  es de unas decenas de KB. Al incluir la bitácora completa no se pierden eventos aunque el sondeo
-  sea más lento que el reloj (50 ms).
+- **Decisión**: sondeo con `fetch` a `GET /api/estado?desdeEvento=<n>` cada 200 ms (y en cada acción
+  del usuario). La bitácora es **incremental**: cada respuesta trae solo los eventos nuevos y el
+  navegador la acumula. El resto del estado (colas, memoria, Gantt compactado en tramos y métricas)
+  va completo.
+- **Justificación**: cumple FR-023/SC-004 (< 1 s) sin bibliotecas. Con 50 procesos, quantum 1 y
+  2 000 ticks, la bitácora completa supera los 500 KB (≈ 2 eventos por tick); enviarla entera en
+  cada sondeo no escala. Con el envío incremental no se pierde ningún evento aunque el sondeo sea
+  más lento que el reloj (50 ms), y cada respuesta pesa unos pocos KB más el Gantt.
 - **Alternativas**: Server-Sent Events (posible con HttpServer, pero añade gestión de conexiones
   largas; se deja como mejora); WebSocket (no soportado por `HttpServer`).
 

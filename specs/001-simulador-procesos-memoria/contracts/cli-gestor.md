@@ -22,8 +22,8 @@ Proceso P2  (instante actual: 5)
 - Los valores de "Quantums (ticks)" están en ticks de CPU: con un quantum mayor que 1, un turno
   consume varios ticks.
 - `Bloque de RAM` muestra `sin asignar (esperando memoria)` en estado Nuevo.
-- En estado Nuevo con adelantamientos ≥ límite se añade la línea `  Prioridad de admisión : sí (bloqueante)`.
-- En Bloqueado se añade `  E/S restante ............: <n> ticks`.
+- Si `bloqueante` es verdadero (campo de `/api/proceso/{id}`) se añade la línea `  Prioridad de admisión : sí (bloqueante)`.
+- En Bloqueado se añade `  E/S restante ............: <n> ticks` (campo `ticksRestantesES`).
 - Estados mostrados: `Nuevo / Espera de memoria`, `Listo`, `En Ejecución`, `Bloqueado`,
   `Terminado`, `Pendiente de llegada`.
 

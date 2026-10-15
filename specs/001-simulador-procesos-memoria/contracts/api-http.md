@@ -34,6 +34,7 @@ cuerpo `{ "error": "<CODIGO>", "mensaje": "<texto en español>" }`.
       "id": "P1", "estado": "TERMINADO", "tiempoLlegada": 0, "tiempoRafaga": 4,
       "ticksConsumidos": 4, "ticksRestantes": 0, "memoria": 30, "prioridad": null,
       "bloque": null, "tiempoEspera": 2, "ticksES": 0, "adelantamientos": 0,
+      "bloqueante": false, "ticksRestantesES": null,
       "instanteFinalizacion": 6, "tiempoRetorno": 6
     }
   ],
@@ -45,6 +46,7 @@ cuerpo `{ "error": "<CODIGO>", "mensaje": "<texto en español>" }`.
   "bitacora": [
     { "instante": 0, "idProceso": "P1", "origen": "PENDIENTE_LLEGADA", "destino": "NUEVO", "motivo": "Llegada" }
   ],
+  "totalEventos": 1,
   "metricas": { "esperaPromedio": 2.5, "retornoPromedio": 6.0, "utilizacionCpu": 100.0, "terminados": 2, "total": 2 },
   "aviso": null
 }
@@ -54,6 +56,19 @@ Notas: los valores del ejemplo solo ilustran la forma de cada campo y no son un 
 de una simulación real. `ejecucion` es `null` si la CPU está ociosa; `bloque` es `{ "base", "limite", "tamano" }` o
 `null`; métricas `null` mientras no apliquen; `modo` ∈ `DETENIDA | EN_CURSO | PAUSADA | FINALIZADA`;
 `aviso` contiene el último mensaje informativo (p. ej. error al releer el escenario al reiniciar).
+
+### Parámetro `desdeEvento` (bitácora incremental)
+
+`GET /api/estado?desdeEvento=n` (entero ≥ 0, por defecto 0) devuelve en `bitacora` solo los
+eventos con índice ≥ n; `totalEventos` indica cuántos eventos hay en total. El dashboard pide
+siempre desde el total que ya tiene y acumula la bitácora en el navegador; si `totalEventos` es
+menor que lo acumulado (tras un Reiniciar), vacía su copia y pide desde 0. Un valor negativo o
+no numérico → 400 `VALOR_INVALIDO`. El resto de campos (incluido el Gantt, compactado en tramos)
+se devuelve siempre completo.
+
+Campos por proceso: `bloqueante` es verdadero solo en estado `NUEVO` con `adelantamientos` ≥
+`maxAdelantamientos`; `ticksRestantesES` es el número de ticks de E/S pendientes en estado
+`BLOQUEADO`, y `null` en otro caso.
 
 ## `GET /api/proceso/{id}`
 

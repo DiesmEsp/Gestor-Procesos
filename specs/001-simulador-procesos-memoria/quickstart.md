@@ -12,7 +12,7 @@
 .\scripts\probar.ps1       # compila y ejecuta todas las clases *Prueba
 ```
 
-Esperado: `probar.ps1` lista cada prueba con `✔`/`✘`, termina con `N pruebas, 0 fallidas` y código 0.
+Esperado: `probar.ps1` lista cada prueba con `[OK]`/`[FALLO]`, termina con `N pruebas, 0 fallidas` y código 0.
 Las pruebas incluyen los escenarios de referencia de la spec (Historia 1, escenarios 1–2;
 Historia 2, escenarios 1–7) y la batería de archivos inválidos (`src/test/recursos/invalidos/`).
 

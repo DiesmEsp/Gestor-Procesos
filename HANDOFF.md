@@ -72,8 +72,18 @@ funcionalidad.
 | F1 | Bajo | Árbol de pruebas, scripts y ejemplos de `plan.md` sincronizado con `tasks.md` |
 | F2 | Bajo | Dependencias entre capas corregidas en `plan.md` (`interfaz.web → motor, modelo, json`) |
 
-Antes de implementar conviene volver a ejecutar `/speckit-analyze` para confirmar que no quedan
-inconsistencias.
+Una segunda pasada de `/speckit-analyze` (0 críticos) encontró 9 hallazgos más, también resueltos:
+
+| ID | Severidad | Resolución |
+|---|---|---|
+| I1 | Medio | `/api/proceso/{id}` incluye `bloqueante` y `ticksRestantesES`, que la CLI necesita |
+| A1 | Medio | Bitácora incremental (`GET /api/estado?desdeEvento=n` + `totalEventos`); el navegador la acumula (research.md §5) |
+| U1 | Medio | Las pruebas muestran `[OK]`/`[FALLO]` (ASCII) y los scripts fuerzan UTF-8 en la consola |
+| U2 | Medio | `ErrorConfiguracion extends RuntimeException`; `reiniciar()` la captura y la convierte en `aviso` |
+| G1, G2 | Bajo | El dashboard muestra adelantamientos, el proceso bloqueante y la causa de la espera de memoria |
+| U3 | Bajo | Auxiliar compartido de pruebas `gestor.pruebas.InvariantesMemoria` |
+| F1 | Bajo | `verificar-capas.ps1` comprueba que solo `Principal` use `entrada` |
+| F2 | Bajo | Objetivo de la Fase 6 y lista de motivos de la bitácora completados |
 
 ## Decisiones ya tomadas (no reabrir sin enmendar los documentos)
 
