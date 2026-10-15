@@ -5,11 +5,12 @@ variable con Best-Fit) para Sistemas Operativos, con dashboard web y CLI PowerSh
 
 ## Estado actual
 
-- **Fases completadas**: diseño con Spec Kit, infraestructura, fundaciones y US1/US2 (**T001–T037**).
-  Motor Round Robin con E/S, memoria Best-Fit/First-Fit, límite anti-inanición configurable,
-  bitácora, Gantt y métricas implementados, sin dependencias externas y respetando las capas.
-  `.\scripts\probar.ps1` reporta **87 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
-- **Siguiente paso**: tarea **T038**, pruebas del lector JSON de US5, de
+- **Fases completadas**: diseño, infraestructura, fundaciones, US1/US2 y carga JSON de US5 (**T001–T044**).
+  Al núcleo se añaden lector JSON propio, validación acumulada, advertencias, arranque informativo
+  y siete ejemplos. `config.json` raíz contiene el escenario didáctico de seis procesos.
+  `.\scripts\probar.ps1` reporta **119 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
+  `.\scripts\iniciar.ps1` valida y muestra el resumen; el arranque HTTP corresponde a T055.
+- **Siguiente paso**: tarea **T045**, pruebas del escritor JSON para la fase web de US3, de
   [`specs/001-simulador-procesos-memoria/tasks.md`](specs/001-simulador-procesos-memoria/tasks.md).
 
 ## Documentos clave (leer en este orden)

@@ -1,0 +1,36 @@
+{
+  "configuracion": {
+    "memoriaTotal": 128,
+    "quantum": 2,
+    "maxAdelantamientos": 3,
+    "politicaMemoria": "FIRST_FIT",
+    "planificador": "ROUND_ROBIN"
+  },
+  "procesos": [
+    {
+      "id": "P1",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 6,
+      "memoria": 60,
+      "prioridad": -2,
+      "bloqueosES": [
+        {
+          "enQuantum": 2,
+          "duracion": 2
+        },
+        {
+          "enQuantum": 4,
+          "duracion": 1
+        }
+      ]
+    },
+    {
+      "id": "P2",
+      "tiempoLlegada": 1,
+      "tiempoRafaga": 3,
+      "memoria": 40,
+      "prioridad": 4,
+      "bloqueosES": []
+    }
+  ]
+}
