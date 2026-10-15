@@ -296,11 +296,21 @@ resuelve primero `::1`; los mensajes conservan `http://localhost:<puerto>` segú
 
 **Purpose**: documentación, verificación de la constitución y validación final
 
-- [ ] T061 [P] Crear `scripts/verificar-capas.ps1`: falla (código 1) si algún archivo de `src/main/java/gestor/{modelo,recursos,motor}` importa `gestor.interfaz`, `gestor.entrada`, `gestor.json`, `com.sun.net.httpserver`, `java.net` o `java.io`/`java.nio.file`, si `gestor/recursos` importa `gestor.motor`, si `gestor/interfaz` importa `gestor.entrada`, si algún archivo distinto de `gestor/Principal.java` importa `gestor.entrada`, o si cualquier archivo importa paquetes fuera de `java.`, `javax.`, `com.sun.net.httpserver` y `gestor.`; invocarlo al final de `scripts/probar.ps1`
-- [ ] T062 [P] Crear `README.md` en español: propósito, requisitos (solo JDK 21), compilar/probar/iniciar, formato de `config.json` (enlace a `specs/001-simulador-procesos-memoria/contracts/config-json.md`), uso de `gestor.ps1`, modelo de tiempo y orden de eventos, fórmulas de métricas, estructura de capas
-- [ ] T063 [P] Revisar que todas las clases y métodos públicos de `src/main/java/gestor/` tengan Javadoc en español y que no queden identificadores, comentarios o mensajes en inglés (salvo palabras reservadas y APIs del JDK)
-- [ ] T064 Prueba de rendimiento SC-004 en `src/test/java/gestor/motor/RendimientoPrueba.java`: con `ejemplos/carga-50.json`, 2 000 llamadas a `avanzarTick()` + `instantanea()` + `EscritorJson` tardan en promedio < 10 ms por tick; la respuesta de un sondeo incremental (eventos de los últimos 4 ticks) ocupa < 500 KB; y la respuesta completa (`desdeEvento=0`) en el último tick se serializa en < 200 ms
-- [ ] T065 Ejecutar la validación completa de `specs/001-simulador-procesos-memoria/quickstart.md` (§1–§5), incluido `scripts/probar-cli.ps1`, más una verificación manual de SC-004: con `ejemplos/carga-50.json` a 50 ms por tick, en las herramientas de desarrollo del navegador cada respuesta de `/api/estado` llega en < 1 s y el instante mostrado nunca se retrasa más de 1 s respecto al real. Corregir cualquier desviación
+- [x] T061 [P] Crear `scripts/verificar-capas.ps1`: falla (código 1) si algún archivo de `src/main/java/gestor/{modelo,recursos,motor}` importa `gestor.interfaz`, `gestor.entrada`, `gestor.json`, `com.sun.net.httpserver`, `java.net` o `java.io`/`java.nio.file`, si `gestor/recursos` importa `gestor.motor`, si `gestor/interfaz` importa `gestor.entrada`, si algún archivo distinto de `gestor/Principal.java` importa `gestor.entrada`, o si cualquier archivo importa paquetes fuera de `java.`, `javax.`, `com.sun.net.httpserver` y `gestor.`; invocarlo al final de `scripts/probar.ps1`
+- [x] T062 [P] Crear `README.md` en español: propósito, requisitos (solo JDK 21), compilar/probar/iniciar, formato de `config.json` (enlace a `specs/001-simulador-procesos-memoria/contracts/config-json.md`), uso de `gestor.ps1`, modelo de tiempo y orden de eventos, fórmulas de métricas, estructura de capas
+- [x] T063 [P] Revisar que todas las clases y métodos públicos de `src/main/java/gestor/` tengan Javadoc en español y que no queden identificadores, comentarios o mensajes en inglés (salvo palabras reservadas y APIs del JDK)
+- [x] T064 Prueba de rendimiento SC-004 en `src/test/java/gestor/motor/RendimientoPrueba.java`: con `ejemplos/carga-50.json`, 2 000 llamadas a `avanzarTick()` + `instantanea()` + `EscritorJson` tardan en promedio < 10 ms por tick; la respuesta de un sondeo incremental (eventos de los últimos 4 ticks) ocupa < 500 KB; y la respuesta completa (`desdeEvento=0`) en el último tick se serializa en < 200 ms
+- [x] T065 Ejecutar la validación completa de `specs/001-simulador-procesos-memoria/quickstart.md` (§1–§5), incluido `scripts/probar-cli.ps1`, más una verificación manual de SC-004: con `ejemplos/carga-50.json` a 50 ms por tick, en las herramientas de desarrollo del navegador cada respuesta de `/api/estado` llega en < 1 s y el instante mostrado nunca se retrasa más de 1 s respecto al real. Corregir cualquier desviación
+
+**Cierre de la especificación**: T001–T065 completadas. `probar.ps1` reporta
+`155 pruebas, 0 fallidas` y ejecuta la verificación de las 35 fuentes; `probar-cli.ps1`
+reporta `7 pruebas CLI, 0 fallidas`, en PS 7 y 5.1. Javadoc se genera sin advertencias con
+`-Xdoclint:all -Werror`. Se verificaron 20 entradas aisladas del comprobador de capas.
+SC-004 cumple las cotas de motor y navegador: media de 1,205–1,217 ms por llamada,
+28.623 bytes incrementales, serialización final de 4,129–4,268 ms, latencia máxima del
+navegador de 41,5 ms y antigüedad visual máxima observada de 323 ms. Los 50 procesos terminan
+en el instante 500 y el navegador conserva los 822 eventos. Ver metodología, comandos y
+resultados de la guía rápida en [validacion-final.md](validacion-final.md).
 
 ---
 

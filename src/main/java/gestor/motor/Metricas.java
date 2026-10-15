@@ -16,10 +16,23 @@ import java.util.List;
  * <li>FR-030: Promedios de espera y retorno = suma de los tiempos / procesos terminados.</li>
  * </ul>
  * Los promedios son nulos sin procesos terminados y la utilización es nula en el instante 0.
+ *
+ * @param esperaPromedio media de espera de los terminados; nula si no hay ninguno
+ * @param retornoPromedio media de retorno de los terminados; nula si no hay ninguno
+ * @param utilizacionCpu porcentaje de CPU ocupada; nulo en el instante cero
+ * @param terminados cantidad de procesos terminados
+ * @param total cantidad total de procesos
  */
 public record Metricas(Double esperaPromedio, Double retornoPromedio, Double utilizacionCpu,
         int terminados, int total) {
-    /** Calcula promedios solo sobre TERMINADO y la utilización sobre todo el tiempo transcurrido. */
+    /**
+     * Calcula promedios solo sobre TERMINADO y la utilización sobre todo el tiempo transcurrido.
+     *
+     * @param procesos procesos en orden de archivo
+     * @param ticksCpuOcupada ticks con CPU ocupada
+     * @param instanteActual ticks totales transcurridos
+     * @return las métricas sin redondear
+     */
     public static Metricas calcular(List<Proceso> procesos, int ticksCpuOcupada, int instanteActual) {
         long sumaEspera = 0;
         long sumaRetorno = 0;

@@ -14,6 +14,11 @@ public final class Principal {
     private Principal() {
     }
 
+    /**
+     * Valida los argumentos, carga el escenario y arranca el servicio web local.
+     *
+     * @param argumentos opciones --config y --puerto del arranque
+     */
     public static void main(String[] argumentos) {
         Argumentos opciones;
         try {

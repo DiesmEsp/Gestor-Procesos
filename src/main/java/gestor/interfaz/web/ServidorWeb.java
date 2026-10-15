@@ -16,6 +16,13 @@ public final class ServidorWeb implements AutoCloseable {
     private boolean iniciado;
     private boolean cerrado;
 
+    /**
+     * Enlaza el servidor a loopback y prepara cuatro trabajadores HTTP.
+     *
+     * @param controlador controlador de simulación compartido con las rutas
+     * @param puerto puerto local; cero solicita uno efímero
+     * @throws IOException si falla el enlace del puerto o la comunicación HTTP
+     */
     public ServidorWeb(ControladorSimulacion controlador, int puerto) throws IOException {
         try {
             servidor = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), puerto), 0);
@@ -28,6 +35,9 @@ public final class ServidorWeb implements AutoCloseable {
         servidor.createContext("/", new ManejadorEstaticos());
     }
 
+    /**
+     * Inicia la escucha HTTP una sola vez; rechaza una instancia previamente cerrada.
+     */
     public synchronized void iniciar() {
         if (cerrado) throw new IllegalStateException("El servidor está cerrado");
         if (!iniciado) {
@@ -36,9 +46,22 @@ public final class ServidorWeb implements AutoCloseable {
         }
     }
 
+    /**
+     * Consulta el puerto asignado tras enlazar el servidor.
+     *
+     * @return el puerto asignado tras enlazar el servidor
+     */
     public int puerto() { return servidor.getAddress().getPort(); }
+    /**
+     * Consulta la dirección de escucha en loopback.
+     *
+     * @return la dirección de escucha en loopback
+     */
     public InetSocketAddress direccion() { return servidor.getAddress(); }
 
+    /**
+     * Cierra la escucha y sus cuatro trabajadores; repetir la operación no tiene efecto.
+     */
     public synchronized void detener() {
         if (!cerrado) {
             cerrado = true;
@@ -47,6 +70,9 @@ public final class ServidorWeb implements AutoCloseable {
         }
     }
 
+    /**
+     * Cierra los recursos de esta instancia de forma idempotente.
+     */
     @Override
     public void close() { detener(); }
 }

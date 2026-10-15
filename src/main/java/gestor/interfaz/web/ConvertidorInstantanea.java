@@ -4,10 +4,17 @@ import gestor.motor.Instantanea;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Adapta los records del motor al contrato HTTP sin acoplar el motor a JSON. */
+/** Adapta los registros del motor al contrato HTTP sin acoplar el motor a JSON. */
 public final class ConvertidorInstantanea {
     private ConvertidorInstantanea() {}
 
+    /**
+     * Adapta una captura al contrato HTTP, incluyendo solo el sufijo solicitado de la bitácora.
+     *
+     * @param estado captura completa del controlador
+     * @param desdeEvento índice del primer evento que se incluye; cero devuelve toda la bitácora
+     * @return el objeto JSON del contrato como mapa de tipos estándar
+     */
     public static Map<String, Object> aMapa(Instantanea estado, long desdeEvento) {
         var configuracion = estado.configuracion();
         var colas = estado.colas();
@@ -36,6 +43,13 @@ public final class ConvertidorInstantanea {
                         "terminados", metricas.terminados(), "total", metricas.total()), "aviso", estado.aviso());
     }
 
+    /**
+     * Adapta un resumen de proceso e incorpora el instante de la consulta.
+     *
+     * @param proceso proceso consultado o incorporado a la cola
+     * @param instante instante simulado en ticks
+     * @return el mapa de campos del proceso más el instante
+     */
     public static Map<String, Object> proceso(Instantanea.ResumenProceso proceso, int instante) {
         var resultado = proceso(proceso);
         resultado.put("instante", instante);

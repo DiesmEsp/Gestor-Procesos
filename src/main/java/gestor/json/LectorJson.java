@@ -16,6 +16,12 @@ public final class LectorJson {
         this.texto = texto;
     }
 
+    /**
+     * Analiza un documento completo y rechaza errores sintácticos o contenido sobrante.
+     *
+     * @param texto documento JSON que se desea analizar
+     * @return el valor raíz del JSON analizado
+     */
     public static Object leer(String texto) {
         if (texto == null) {
             throw new ErrorJson(1, 1, "se esperaba un valor JSON");

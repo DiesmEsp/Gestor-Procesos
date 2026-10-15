@@ -21,8 +21,19 @@ import java.util.Set;
 public final class ManejadorApi implements HttpHandler {
     private final ControladorSimulacion controlador;
 
+    /**
+     * Asocia las rutas HTTP al controlador compartido.
+     *
+     * @param controlador controlador compartido con el reloj
+     */
     public ManejadorApi(ControladorSimulacion controlador) { this.controlador = controlador; }
 
+    /**
+     * Atiende una solicitud HTTP y cierra el intercambio al completar la respuesta.
+     *
+     * @param intercambio solicitud y canal de respuesta HTTP
+     * @throws IOException si falla el enlace del puerto o la comunicación HTTP
+     */
     @Override
     public void handle(HttpExchange intercambio) throws IOException {
         try {

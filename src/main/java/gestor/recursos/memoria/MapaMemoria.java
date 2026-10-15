@@ -11,6 +11,12 @@ public final class MapaMemoria {
     private final PoliticaAsignacion politica;
     private final List<Bloque> bloques = new ArrayList<>();
 
+    /**
+     * Crea una RAM vacía con un único hueco y la política indicada.
+     *
+     * @param memoriaTotal capacidad total de RAM en MB, mayor o igual a uno
+     * @param politica estrategia de asignación de huecos
+     */
     public MapaMemoria(int memoriaTotal, PoliticaAsignacion politica) {
         if (memoriaTotal < 1) {
             throw new IllegalArgumentException("La memoria total debe ser mayor o igual a 1 MB");
@@ -20,6 +26,13 @@ public final class MapaMemoria {
         bloques.add(new Bloque(0, memoriaTotal, null));
     }
 
+    /**
+     * Asigna memoria contigua y divide el hueco elegido; devuelve vacío si ninguno alcanza.
+     *
+     * @param id identificador único del proceso
+     * @param tamano tamaño positivo del bloque en MB
+     * @return el bloque asignado, o vacío si no hay hueco suficiente
+     */
     public Optional<Bloque> asignar(String id, int tamano) {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("El identificador del proceso no puede estar vacío");
@@ -48,7 +61,11 @@ public final class MapaMemoria {
         return Optional.of(asignado);
     }
 
-    /** Libera el bloque y fusiona los huecos vecinos en ambos sentidos (FR-016). */
+    /**
+     * Libera el bloque y fusiona los huecos vecinos en ambos sentidos (FR-016).
+     *
+     * @param id identificador único del proceso
+     */
     public void liberar(String id) {
         Bloque ocupado = bloqueDe(id).orElseThrow(
                 () -> new IllegalArgumentException("No hay memoria asignada al proceso " + id));
@@ -70,33 +87,68 @@ public final class MapaMemoria {
         }
     }
 
+    /**
+     * Consulta la suma de los huecos libres en MB.
+     *
+     * @return la suma de los huecos libres en MB
+     */
     public int memoriaLibre() {
         return bloques.stream().filter(Bloque::esHueco).mapToInt(Bloque::tamano).sum();
     }
 
+    /**
+     * Consulta el mayor hueco contiguo en MB.
+     *
+     * @return el mayor hueco contiguo en MB
+     */
     public int mayorHueco() {
         return bloques.stream().filter(Bloque::esHueco).mapToInt(Bloque::tamano).max().orElse(0);
     }
 
-    /** FR-017: fragmentación externa = memoria libre − mayor hueco contiguo. */
+    /**
+     * FR-017: fragmentación externa = memoria libre − mayor hueco contiguo.
+     *
+     * @return la memoria libre menos el mayor hueco, en MB
+     */
     public int fragmentacionExterna() {
         return memoriaLibre() - mayorHueco();
     }
 
+    /**
+     * Comprueba si un hueco contiguo puede alojar el tamaño solicitado.
+     *
+     * @param tamano tamaño positivo del bloque en MB
+     * @return verdadero si existe un hueco apto
+     */
     public boolean cabe(int tamano) {
         return tamano > 0 && bloques.stream().anyMatch(bloque -> bloque.esHueco() && bloque.tamano() >= tamano);
     }
 
+    /**
+     * Busca la partición ocupada por un proceso.
+     *
+     * @param id identificador único del proceso
+     * @return el bloque ocupado, o vacío si el proceso no tiene RAM
+     */
     public Optional<Bloque> bloqueDe(String id) {
         return bloques.stream().filter(bloque -> !bloque.esHueco() && Objects.equals(id, bloque.idProceso()))
                 .findFirst();
     }
 
+    /**
+     * Consulta las particiones ordenadas por base en una lista inmutable.
+     *
+     * @return las particiones ordenadas por base en una lista inmutable
+     */
     public List<Bloque> bloques() {
         return List.copyOf(bloques);
     }
 
-    /** Copia independiente del mapa; sus registros de bloques son inmutables. */
+    /**
+     * Copia independiente del mapa; sus registros de bloques son inmutables.
+     *
+     * @return una copia independiente de esta instancia
+     */
     public MapaMemoria copia() {
         MapaMemoria copia = new MapaMemoria(total, politica);
         copia.bloques.clear();
@@ -104,6 +156,11 @@ public final class MapaMemoria {
         return copia;
     }
 
+    /**
+     * Consulta la capacidad total de la RAM en MB.
+     *
+     * @return la capacidad total en MB
+     */
     public int total() {
         return total;
     }

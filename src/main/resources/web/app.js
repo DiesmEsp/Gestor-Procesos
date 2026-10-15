@@ -15,6 +15,8 @@
   let accionPendiente = false;
   let sondeoPendiente = false;
   let secuencia = Promise.resolve();
+  let respuestasEstado = 0;
+  let maximaLatenciaEstadoMs = 0;
 
   function crear(etiqueta, clase, texto) {
     const nodo = document.createElement(etiqueta);
@@ -237,10 +239,20 @@
 
   async function pedir(ruta, opciones = {}) {
     const cancelacion = new AbortController();
+    const inicioPeticion = performance.now();
     const plazo = setTimeout(() => cancelacion.abort(), 2500);
     try {
       const respuesta = await fetch(ruta, { cache: "no-store", ...opciones, signal: cancelacion.signal });
       const cuerpo = await respuesta.json();
+      // Datos inspeccionables para reproducir SC-004: incluyen descarga y análisis de JSON.
+      if (ruta.startsWith("/api/estado")) {
+        const latenciaMs = performance.now() - inicioPeticion;
+        respuestasEstado++;
+        maximaLatenciaEstadoMs = Math.max(maximaLatenciaEstadoMs, latenciaMs);
+        elemento("conexion").dataset.respuestasEstado = respuestasEstado;
+        elemento("conexion").dataset.latenciaEstadoMs = latenciaMs.toFixed(3);
+        elemento("conexion").dataset.maximaLatenciaEstadoMs = maximaLatenciaEstadoMs.toFixed(3);
+      }
       if (!respuesta.ok) {
         const error = new Error(cuerpo.mensaje || `Error HTTP ${respuesta.status}`);
         error.esRespuesta = true;

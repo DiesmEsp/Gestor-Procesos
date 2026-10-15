@@ -7,8 +7,19 @@ import java.util.Map;
 
 /** Sirve exclusivamente los recursos web conocidos, empaquetados dentro del jar. */
 public final class ManejadorEstaticos implements HttpHandler {
+    /**
+     * Crea una instancia lista para su primer uso, sin estado previo.
+     */
+    public ManejadorEstaticos() {}
+
     private static final Map<String, String> TIPOS = Map.of("/", "text/html", "/estilos.css", "text/css", "/app.js", "text/javascript");
 
+    /**
+     * Atiende una solicitud HTTP y cierra el intercambio al completar la respuesta.
+     *
+     * @param intercambio solicitud y canal de respuesta HTTP
+     * @throws IOException si falla el enlace del puerto o la comunicación HTTP
+     */
     @Override
     public void handle(HttpExchange intercambio) throws IOException {
         try {

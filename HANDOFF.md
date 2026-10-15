@@ -6,14 +6,27 @@ variable con Best-Fit) para Sistemas Operativos, con dashboard web y CLI PowerSh
 ## Estado actual
 
 - **Fases completadas**: diseño, infraestructura, fundaciones, US1/US2, carga JSON de US5,
-  dashboard web de US3 y CLI de US4 (**T001–T060**). Hay escritor JSON propio, instantáneas
+  dashboard web de US3, CLI de US4 y verificación final (**T001–T065**). Hay escritor JSON propio, instantáneas
   inmutables, controlador con reloj y API local. `config.json` raíz contiene el escenario didáctico de
-  seis procesos. `.\scripts\probar.ps1` reporta **152 pruebas, 0 fallidas** con JDK 21 en
+  seis procesos. `.\scripts\probar.ps1` reporta **155 pruebas, 0 fallidas** con JDK 21 en
   PowerShell 5.1 y 7. `.\scripts\iniciar.ps1` valida, informa el resumen y arranca el servidor.
   `/` sirve el dashboard completo. `scripts/probar-cli.ps1` reporta **7 pruebas CLI, 0 fallidas**
   en ambas versiones de PowerShell y comprueba SC-005 con invocaciones en procesos separados.
-- **Siguiente paso**: tarea **T061**, verificador de capas, seguida del pulido T062–T065, de
-  [`specs/001-simulador-procesos-memoria/tasks.md`](specs/001-simulador-procesos-memoria/tasks.md).
+- **Especificación concluida**: las 65 tareas están completadas. El informe de
+  [validación final](specs/001-simulador-procesos-memoria/validacion-final.md) recoge los
+  comandos, mediciones y comprobaciones de `quickstart.md` §1–§5.
+
+`verificar-capas.ps1` se ejecuta al final de `probar.ps1`, rechaza importaciones prohibidas
+y devuelve código 1 ante infracciones. Se probó con 20 entradas aisladas. Todos los tipos
+y métodos públicos tienen Javadoc en español; `javadoc -Xdoclint:all -Werror` termina sin
+advertencias. El README documenta uso, configuración, orden temporal, métricas y capas.
+
+`RendimientoPrueba` añade tres comprobaciones: 2000 llamadas a tick, captura y serialización
+con media inferior a 10 ms; respuesta incremental inferior a 500 KB; y serialización final
+inferior a 200 ms. Con 50 procesos a 50 ms por tick, el navegador completó 500 ticks y
+conservó los 822 eventos. Se observaron 41,5 ms de latencia máxima y 323 ms de antigüedad
+máxima del estado visible. Los atributos `data-*` de `#conexion` permiten inspeccionar
+cantidad de respuestas y latencias sin cambiar la presentación.
 
 El dashboard no usa bibliotecas: serializa las peticiones GET/POST para impedir respuestas
 fuera de orden, consulta cada 200 ms y acumula eventos desde `totalEventos`. Si el contador

@@ -63,6 +63,12 @@ dependencias entre capas y no introducen bibliotecas. Sin nuevas violaciones. �
 Principio III) y C2 (política y planificador configurables, Principio V). Ver research.md §9.
 Sin violaciones pendientes. ✅
 
+**Re-evaluación final de implementación (2026-10-15)**: los seis principios se mantienen.
+Las 35 fuentes pasan el verificador de capas integrado; hay 155 pruebas Java y 7 pruebas
+CLI correctas en PowerShell 5.1 y 7, Javadoc sin advertencias y mediciones de SC-004/SC-005
+dentro de sus cotas. No se añadieron dependencias externas ni excepciones a la arquitectura.
+T001–T065 completadas; metodología y evidencia en [validacion-final.md](validacion-final.md). ✅
+
 ## Project Structure
 
 ### Documentation (this feature)

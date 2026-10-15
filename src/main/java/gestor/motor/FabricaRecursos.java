@@ -14,6 +14,12 @@ public final class FabricaRecursos {
     private FabricaRecursos() {
     }
 
+    /**
+     * Construye una estrategia de asignación mediante un switch exhaustivo.
+     *
+     * @param politica estrategia de asignación de huecos
+     * @return una estrategia de asignación nueva
+     */
     public static PoliticaAsignacion crearPolitica(PoliticaMemoria politica) {
         Objects.requireNonNull(politica, "La política de memoria no puede ser nula");
         return switch (politica) {
@@ -22,6 +28,12 @@ public final class FabricaRecursos {
         };
     }
 
+    /**
+     * Construye un planificador mediante un switch exhaustivo.
+     *
+     * @param algoritmo algoritmo de planificación seleccionado
+     * @return un planificador nuevo
+     */
     public static Planificador crearPlanificador(AlgoritmoPlanificacion algoritmo) {
         Objects.requireNonNull(algoritmo, "El algoritmo de planificación no puede ser nulo");
         return switch (algoritmo) {

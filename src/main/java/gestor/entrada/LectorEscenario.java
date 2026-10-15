@@ -21,8 +21,20 @@ import java.util.Set;
 
 /** Lee escenarios UTF-8 y valida el contrato completo antes de construir el modelo. */
 public final class LectorEscenario {
+    /**
+     * Crea una instancia lista para su primer uso, sin estado previo.
+     */
+    public LectorEscenario() {}
+
     private final List<String> advertencias = new ArrayList<>();
 
+    /**
+     * Lee un archivo UTF-8 y valida todos los campos del escenario antes de construirlo.
+     *
+     * @param ruta ruta al archivo JSON codificado en UTF-8
+     * @return el escenario validado del archivo
+     * @throws ErrorConfiguracion si el archivo no es legible o contiene errores de configuración
+     */
     public Escenario leer(Path ruta) {
         advertencias.clear();
         try {
@@ -35,6 +47,12 @@ public final class LectorEscenario {
         }
     }
 
+    /**
+     * Valida un escenario JSON y acumula sus errores antes de devolver el modelo.
+     *
+     * @param json documento JSON del escenario
+     * @return el escenario validado
+     */
     public Escenario leerTexto(String json) {
         advertencias.clear();
         Object contenido;
@@ -52,11 +70,16 @@ public final class LectorEscenario {
         return escenario;
     }
 
+    /**
+     * Consulta una copia de las advertencias de la última lectura.
+     *
+     * @return una copia de las advertencias de la última lectura
+     */
     public List<String> advertencias() {
         return List.copyOf(advertencias);
     }
 
-    /** Cada lectura tiene sus diagnósticos propios y evita construir records con valores inválidos. */
+    /** Cada lectura tiene sus diagnósticos propios y evita construir registros con valores inválidos. */
     private static final class Validacion {
         private static final Set<String> CAMPOS_RAIZ = Set.of("configuracion", "procesos");
         private static final Set<String> CAMPOS_CONFIGURACION = Set.of("memoriaTotal", "quantum", "maxAdelantamientos",

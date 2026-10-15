@@ -33,6 +33,11 @@ try {
         })
 
     & java '-Dstdout.encoding=UTF-8' '-Dstderr.encoding=UTF-8' -cp 'build/clases;build/pruebas' gestor.pruebas.EjecutorPruebas @clasesPrueba
+    $codigoPruebas = $LASTEXITCODE
+    & (Join-Path $PSScriptRoot 'verificar-capas.ps1')
+    if ($codigoPruebas -ne 0) {
+        exit $codigoPruebas
+    }
     exit $LASTEXITCODE
 } catch {
     [Console]::Error.WriteLine("Error al ejecutar las pruebas: $($_.Exception.Message)")

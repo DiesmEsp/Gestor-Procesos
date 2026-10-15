@@ -23,11 +23,21 @@ public final class ControladorSimulacion implements AutoCloseable {
     private boolean cerrado;
     private long proximoTick;
 
+    /**
+     * Carga el escenario inicial y crea el reloj en un hilo demonio.
+     *
+     * @param proveedor proveedor del escenario validado, invocado también al reiniciar
+     */
     public ControladorSimulacion(Supplier<Escenario> proveedor) {
         this(proveedor, true);
     }
 
-    /** La variante sin reloj permite ejecutar pruebas deterministas mediante avanzarManual(). */
+    /**
+     * La variante sin reloj permite ejecutar pruebas deterministas mediante avanzarManual().
+     *
+     * @param proveedor proveedor del escenario validado, invocado también al reiniciar
+     * @param relojAutomatico si se crea el hilo de reloj; falso permite avanzar solo mediante pruebas manuales
+     */
     public ControladorSimulacion(Supplier<Escenario> proveedor, boolean relojAutomatico) {
         this.proveedor = Objects.requireNonNull(proveedor, "El proveedor no puede ser nulo");
         ultimoEscenarioValido = Objects.requireNonNull(proveedor.get(), "El escenario no puede ser nulo");
@@ -36,6 +46,9 @@ public final class ControladorSimulacion implements AutoCloseable {
         if (relojAutomatico) Thread.ofPlatform().daemon().name("reloj-simulacion").start(this::ejecutarReloj);
     }
 
+    /**
+     * Inicia o reanuda el reloj; rechaza el modo en curso o finalizado.
+     */
     public synchronized void iniciar() {
         asegurarAbierto();
         if (modo != ModoSimulacion.DETENIDA && modo != ModoSimulacion.PAUSADA) {
@@ -45,6 +58,9 @@ public final class ControladorSimulacion implements AutoCloseable {
         programarTick();
     }
 
+    /**
+     * Detiene el avance entre ticks; solo se admite con la simulación en curso.
+     */
     public synchronized void pausar() {
         asegurarAbierto();
         if (modo != ModoSimulacion.EN_CURSO) throw new IllegalStateException("Solo se puede pausar una simulación en curso");
@@ -52,6 +68,9 @@ public final class ControladorSimulacion implements AutoCloseable {
         notifyAll();
     }
 
+    /**
+     * Avanza exactamente un tick en modo en curso, manteniendo las mismas reglas del reloj.
+     */
     public synchronized void avanzarManual() {
         asegurarAbierto();
         if (modo != ModoSimulacion.EN_CURSO) throw new IllegalStateException("Solo se puede avanzar una simulación en curso");
@@ -59,6 +78,11 @@ public final class ControladorSimulacion implements AutoCloseable {
         programarTick();
     }
 
+    /**
+     * Fija el quantum que se utilizará a partir del próximo despacho de CPU.
+     *
+     * @param quantum duración máxima del turno en ticks, mayor o igual a uno
+     */
     public synchronized void cambiarQuantum(int quantum) {
         asegurarAbierto();
         motor.cambiarQuantum(quantum);
@@ -66,6 +90,11 @@ public final class ControladorSimulacion implements AutoCloseable {
         quantumModificado = true;
     }
 
+    /**
+     * Recrea la RAM antes del inicio; rechaza capacidades que no alojen algún proceso.
+     *
+     * @param memoriaTotal capacidad total de RAM en MB, mayor o igual a uno
+     */
     public synchronized void cambiarMemoriaTotal(int memoriaTotal) {
         asegurarAbierto();
         if (modo != ModoSimulacion.DETENIDA) {
@@ -79,6 +108,11 @@ public final class ControladorSimulacion implements AutoCloseable {
         recrearMotor();
     }
 
+    /**
+     * Recrea los recursos con otra política, solo antes de iniciar la simulación.
+     *
+     * @param politica estrategia de asignación de huecos
+     */
     public synchronized void cambiarPoliticaMemoria(PoliticaMemoria politica) {
         asegurarAbierto();
         if (modo != ModoSimulacion.DETENIDA) {
@@ -89,6 +123,11 @@ public final class ControladorSimulacion implements AutoCloseable {
         recrearMotor();
     }
 
+    /**
+     * Fija el intervalo del reloj sin cambiar el tiempo lógico de la simulación.
+     *
+     * @param milisegundos intervalo por tick entre 50 y 2000 ms
+     */
     public synchronized void cambiarVelocidad(int milisegundos) {
         asegurarAbierto();
         if (milisegundos < 50 || milisegundos > 2000) throw new IllegalArgumentException("La velocidad debe estar entre 50 y 2000 ms por tick");
@@ -96,7 +135,9 @@ public final class ControladorSimulacion implements AutoCloseable {
         programarTick();
     }
 
-    /** Relee el proveedor sin perder el último escenario válido ni las preferencias explícitas. */
+    /**
+     * Relee el proveedor sin perder el último escenario válido ni las preferencias explícitas.
+     */
     public synchronized void reiniciar() {
         asegurarAbierto();
         aviso = null;
@@ -122,15 +163,26 @@ public final class ControladorSimulacion implements AutoCloseable {
         notifyAll();
     }
 
+    /**
+     * Obtiene una captura inmutable y coherente del estado simulado.
+     *
+     * @return una captura inmutable del instante actual
+     */
     public synchronized Instantanea instantanea() {
         return motor.instantanea().con(modo, velocidadMs, aviso);
     }
 
+    /**
+     * Solicita el cierre del reloj y despierta el hilo para que termine.
+     */
     public synchronized void detener() {
         cerrado = true;
         notifyAll();
     }
 
+    /**
+     * Cierra los recursos de esta instancia de forma idempotente.
+     */
     @Override
     public synchronized void close() { detener(); }
 

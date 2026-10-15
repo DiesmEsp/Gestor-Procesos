@@ -7,6 +7,12 @@ import java.util.Map;
 public final class EscritorJson {
     private EscritorJson() {}
 
+    /**
+     * Serializa valores estándar a JSON compacto conservando el orden de los mapas.
+     *
+     * @param valor valor compatible con JSON
+     * @return el documento JSON compacto
+     */
     public static String escribir(Object valor) {
         StringBuilder texto = new StringBuilder();
         agregar(valor, texto);

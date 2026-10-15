@@ -30,7 +30,13 @@ public final class Motor {
     private int instanteActual;
     private int ticksCpuOcupada;
 
-    /** Recibe un escenario validado y recursos cuyo uso queda a cargo del motor. */
+    /**
+     * Recibe un escenario validado y recursos cuyo uso queda a cargo del motor.
+     *
+     * @param escenario escenario previamente validado
+     * @param politica estrategia de asignación de huecos
+     * @param planificador estrategia de planificación de CPU
+     */
     public Motor(Escenario escenario, PoliticaAsignacion politica, Planificador planificador) {
         Objects.requireNonNull(escenario, "El escenario no puede ser nulo");
         configuracion = escenario.configuracion();
@@ -58,6 +64,11 @@ public final class Motor {
         instanteActual++;
     }
 
+    /**
+     * Fija el quantum que se utilizará a partir del próximo despacho de CPU.
+     *
+     * @param quantum duración máxima del turno en ticks, mayor o igual a uno
+     */
     public void cambiarQuantum(int quantum) {
         if (quantum < 1) {
             throw new IllegalArgumentException("El quantum debe ser mayor o igual a 1 tick");
@@ -208,48 +219,95 @@ public final class Motor {
         bitacora.registrar(instante, proceso.definicion().id(), origen, destino, motivo);
     }
 
+    /**
+     * Consulta el instante simulado actual.
+     *
+     * @return el instante simulado actual
+     */
     public int instanteActual() {
         return instanteActual;
     }
 
+    /**
+     * Indica si todos los procesos terminaron su ciclo de vida.
+     *
+     * @return verdadero si todos los procesos están terminados
+     */
     public boolean finalizada() {
         return procesos.stream().allMatch(proceso -> proceso.estado() == EstadoProceso.TERMINADO);
     }
 
+    /**
+     * Consulta los ticks con CPU ocupada.
+     *
+     * @return los ticks con CPU ocupada
+     */
     public int ticksCpuOcupada() {
         return ticksCpuOcupada;
     }
 
-    /** FR-015a: la protección solo está activa mientras el proceso espera memoria en NUEVO. */
+    /**
+     * FR-015a: la protección solo está activa mientras el proceso espera memoria en NUEVO.
+     *
+     * @param proceso proceso consultado o incorporado a la cola
+     * @return verdadero solo en Nuevo con el límite de adelantamientos alcanzado
+     */
     public boolean esBloqueante(Proceso proceso) {
         Objects.requireNonNull(proceso, "El proceso consultado no puede ser nulo");
         return proceso.estado() == EstadoProceso.NUEVO
                 && proceso.adelantamientos() >= configuracion.maxAdelantamientos();
     }
 
-    /** Lista inmodificable de copias separadas de los PCB, estable entre ticks. */
+    /**
+     * Lista inmodificable de copias separadas de los PCB, estable entre ticks.
+     *
+     * @return copias de los PCB en una lista inmutable
+     */
     public List<Proceso> procesos() {
         return procesos.stream().map(Proceso::copia).toList();
     }
 
+    /**
+     * Consulta los eventos en orden de registro.
+     *
+     * @return los eventos en orden de registro
+     */
     public List<EventoBitacora> bitacora() {
         return bitacora.eventos();
     }
 
+    /**
+     * Consulta los tramos acumulados de CPU y ocio.
+     *
+     * @return los tramos acumulados de CPU y ocio
+     */
     public List<TramoGantt> gantt() {
         return gantt.tramos();
     }
 
-    /** Mapa separado del motor; modificar esta copia no altera la simulación. */
+    /**
+     * Mapa separado del motor; modificar esta copia no altera la simulación.
+     *
+     * @return una copia independiente del mapa de RAM
+     */
     public MapaMemoria mapaMemoria() {
         return mapaMemoria.copia();
     }
 
+    /**
+     * Consulta las métricas del instante actual.
+     *
+     * @return las métricas del instante actual
+     */
     public Metricas metricas() {
         return Metricas.calcular(procesos, ticksCpuOcupada, instanteActual);
     }
 
-    /** Captura entre ticks; el contexto del reloj lo completa exclusivamente el controlador. */
+    /**
+     * Captura entre ticks; el contexto del reloj lo completa exclusivamente el controlador.
+     *
+     * @return una captura inmutable del instante actual
+     */
     public Instantanea instantanea() {
         var nuevos = esperaMemoria.stream().map(proceso -> new Instantanea.ProcesoEnEspera(
                 proceso.definicion().id(), proceso.definicion().memoria(), proceso.adelantamientos(), esBloqueante(proceso))).toList();
