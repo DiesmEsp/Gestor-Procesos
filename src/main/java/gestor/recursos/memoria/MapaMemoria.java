@@ -96,6 +96,14 @@ public final class MapaMemoria {
         return List.copyOf(bloques);
     }
 
+    /** Copia independiente del mapa; sus registros de bloques son inmutables. */
+    public MapaMemoria copia() {
+        MapaMemoria copia = new MapaMemoria(total, politica);
+        copia.bloques.clear();
+        copia.bloques.addAll(bloques);
+        return copia;
+    }
+
     public int total() {
         return total;
     }

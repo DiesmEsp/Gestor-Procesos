@@ -5,11 +5,11 @@ variable con Best-Fit) para Sistemas Operativos, con dashboard web y CLI PowerSh
 
 ## Estado actual
 
-- **Fases completadas**: diseño con Spec Kit, infraestructura y fundaciones (**T001–T030**).
-  Modelo, memoria Best-Fit/First-Fit, CPU Round Robin, fábrica, bitácora y Gantt implementados,
-  sin dependencias externas y respetando las capas del plan.
-  `.\scripts\probar.ps1` reporta **47 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
-- **Siguiente paso**: tarea **T031**, pruebas del motor antes de su implementación, de
+- **Fases completadas**: diseño con Spec Kit, infraestructura, fundaciones y US1 (**T001–T035**).
+  Motor de ticks Round Robin con E/S, quantum fijado por turno, bitácora, Gantt y métricas
+  implementados, sin dependencias externas y respetando las capas del plan.
+  `.\scripts\probar.ps1` reporta **75 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
+- **Siguiente paso**: tarea **T036**, pruebas de admisión de memoria y anti-inanición de US2, de
   [`specs/001-simulador-procesos-memoria/tasks.md`](specs/001-simulador-procesos-memoria/tasks.md).
 
 ## Documentos clave (leer en este orden)

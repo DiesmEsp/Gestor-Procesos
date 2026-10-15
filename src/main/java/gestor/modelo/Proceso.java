@@ -23,6 +23,27 @@ public final class Proceso {
         this.definicion = Objects.requireNonNull(definicion, "La definición del proceso no puede ser nula");
     }
 
+    private Proceso(Proceso origen) {
+        definicion = origen.definicion;
+        estado = origen.estado;
+        ticksConsumidos = origen.ticksConsumidos;
+        indiceSiguienteES = origen.indiceSiguienteES;
+        ticksQuantumUsados = origen.ticksQuantumUsados;
+        finBloqueo = origen.finBloqueo;
+        baseBloque = origen.baseBloque;
+        tamanoBloque = origen.tamanoBloque;
+        ticksEsperaListo = origen.ticksEsperaListo;
+        ticksEsperaMemoria = origen.ticksEsperaMemoria;
+        ticksES = origen.ticksES;
+        adelantamientos = origen.adelantamientos;
+        instanteFinalizacion = origen.instanteFinalizacion;
+    }
+
+    /** Copia independiente del PCB para consultar el motor sin modificar su estado. */
+    public Proceso copia() {
+        return new Proceso(this);
+    }
+
     public DefinicionProceso definicion() {
         return definicion;
     }
