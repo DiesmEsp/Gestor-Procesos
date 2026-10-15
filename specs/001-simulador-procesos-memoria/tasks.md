@@ -1,0 +1,309 @@
+---
+
+description: "Lista de tareas para implementar el Simulador de Gestión de Procesos y Memoria RAM"
+---
+
+# Tasks: Simulador de Gestión de Procesos y Memoria RAM
+
+**Input**: Design documents from `/specs/001-simulador-procesos-memoria/`
+
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
+
+**Tests**: OBLIGATORIAS. La constitución (Principio VI) exige desarrollo guiado por pruebas: cada
+tarea de prueba se escribe ANTES de su implementación y debe fallar primero. Se ejecutan con
+`.\scripts\probar.ps1` (micro-framework propio, research.md §2).
+
+**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+
+**Convenciones**: todo el código, nombres, comentarios y mensajes en español. Solo biblioteca
+estándar de Java 21. Paquete raíz `gestor`. Compilación con `javac --release 21 -encoding UTF-8`.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[Story]**: Which user story this task belongs to (US1 = RR + E/S, US2 = memoria Best-Fit,
+  US3 = dashboard web, US4 = CLI PowerShell, US5 = carga de `config.json`)
+- Include exact file paths in descriptions
+
+## Path Conventions
+
+- Producción: `src/main/java/gestor/...`, estáticos en `src/main/resources/web/`
+- Pruebas: `src/test/java/gestor/...`, datos de prueba en `src/test/recursos/`
+- Scripts: `scripts/`; CLI: `gestor.ps1` en la raíz; escenarios: `ejemplos/`
+
+---
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: estructura del proyecto, scripts de construcción y micro-framework de pruebas
+
+- [ ] T001 Crear la estructura de directorios del plan (`src/main/java/gestor/{modelo,json,entrada,recursos/cpu,recursos/memoria,motor,interfaz/web}`, `src/main/resources/web`, `src/test/java/gestor/{pruebas,json,entrada,recursos/cpu,recursos/memoria,motor,interfaz/web}`, `src/test/recursos/invalidos`, `scripts`, `ejemplos`) y un `.gitignore` en la raíz que excluya `build/`
+- [ ] T002 [P] Crear `scripts/compilar.ps1`: borra y recrea `build/clases`, compila todos los `.java` de `src/main/java` con `javac --release 21 -encoding UTF-8 -d build/clases`, copia `src/main/resources/*` a `build/clases`, genera `build/gestor-procesos.jar` con `jar --create --file build/gestor-procesos.jar --main-class gestor.Principal -C build/clases .`; termina con `exit 1` y mensaje en español si `javac` o `jar` fallan
+- [ ] T003 [P] Crear `scripts/probar.ps1`: invoca `compilar.ps1`, compila `src/test/java` contra `build/clases` en `build/pruebas`, copia `src/test/recursos` a `build/pruebas/recursos`, obtiene los nombres de clase de todos los archivos `*Prueba.java` (ruta → `gestor.x.YPrueba`), ejecuta `java -cp "build/clases;build/pruebas" gestor.pruebas.EjecutorPruebas <clases...>` con el directorio de trabajo en la raíz y propaga `$LASTEXITCODE`
+- [ ] T004 [P] Crear `scripts/iniciar.ps1` con parámetros `-Config` (defecto `.\config.json`) y `-Puerto` (defecto 8080): compila si no existe `build/gestor-procesos.jar` y ejecuta `java -jar build/gestor-procesos.jar --config <ruta> --puerto <n>`
+- [ ] T005 [P] Crear la anotación `@Prueba` (`@Retention(RUNTIME)`, `@Target(METHOD)`) en `src/test/java/gestor/pruebas/Prueba.java`
+- [ ] T006 [P] Crear `src/test/java/gestor/pruebas/Afirmar.java` con métodos estáticos `iguales(Object esperado, Object real, String mensaje)` (usa `Objects.equals`; mensaje "Se esperaba <x> pero fue <y>"), `iguales(double, double, double tolerancia, String)`, `verdadero`, `falso`, `nulo`, `noNulo`, `contiene(String texto, String fragmento, String)` y `<T extends Throwable> T lanza(Class<T>, Runnable)` que devuelve la excepción capturada; todos lanzan `AssertionError` con mensaje en español
+- [ ] T007 Crear `src/test/java/gestor/pruebas/EjecutorPruebas.java` (main): recibe nombres de clase, por cada método `@Prueba` crea una instancia nueva y lo invoca; imprime `✔ Clase.metodo` o `✘ Clase.metodo: <mensaje>` (desempaquetando `InvocationTargetException`), resumen `N pruebas, M fallidas` y `System.exit(1)` si M > 0 (depende de T005, T006)
+
+**Checkpoint**: `.\scripts\probar.ps1` se ejecuta y reporta "0 pruebas, 0 fallidas".
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: modelo de dominio, recurso de memoria (mapa + Best-Fit) y recurso de CPU (Round Robin), que necesitan todas las historias
+
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+
+### Pruebas fundacionales (escribir primero, deben fallar)
+
+- [ ] T008 [P] Escribir `src/test/java/gestor/modelo/TransicionesPcbPrueba.java`: cada transición válida de data-model.md (`PENDIENTE_LLEGADA→NUEVO`, `NUEVO→LISTO`, `LISTO→EJECUCION`, `EJECUCION→LISTO`, `EJECUCION→BLOQUEADO`, `BLOQUEADO→LISTO`, `EJECUCION→TERMINADO`) se acepta; todas las demás combinaciones (p. ej. `LISTO→BLOQUEADO`, `TERMINADO→LISTO`, `NUEVO→EJECUCION`) lanzan `IllegalStateException` con mensaje en español; `ticksRestantes = tiempoRafaga − ticksConsumidos`; `tiempoEspera = ticksEsperaListo + ticksEsperaMemoria`; `tiempoRetorno = instanteFinalizacion − tiempoLlegada`
+- [ ] T009 [P] Escribir `src/test/java/gestor/recursos/memoria/MapaMemoriaPrueba.java`: mapa nuevo de 100 MB = un hueco [0–99]; asignar divide el hueco (proceso al inicio, sobrante como hueco); escenario 3 de la Historia 2 (A [0–49], B [50–69], C [70–89], hueco [90–99]; liberar A y C → huecos [0–49] y [70–99]; liberar B → único hueco [0–99]); `memoriaLibre`, `mayorHueco`, `fragmentacionExterna` (= libre − mayor hueco); método auxiliar `verificarInvariantes(MapaMemoria)` que comprueba contigüidad, suma de tamaños = total y ausencia de huecos adyacentes (SC-007) y se llama tras cada operación; asignar con memoria insuficiente devuelve `Optional.empty()` sin alterar el mapa; liberar un id inexistente lanza `IllegalArgumentException`
+- [ ] T010 [P] Escribir `src/test/java/gestor/recursos/memoria/MejorAjustePrueba.java`: escenario 1 de la Historia 2 (huecos [0–49] y [70–99], proceso de 25 MB → hueco con base 70); empate de tamaño → menor base (escenario 2); ningún hueco suficiente → vacío; hueco de tamaño exacto se elige sobre uno mayor
+- [ ] T011 [P] Escribir `src/test/java/gestor/recursos/cpu/PlanificadorRoundRobinPrueba.java`: FIFO al encolar/extraer; `siguiente()` con cola vacía devuelve `null`; `debeExpropiar` es verdadero solo si `ticksQuantumUsados ≥ quantum`; `cola()` devuelve vista no modificable en orden
+
+### Modelo (`gestor.modelo`)
+
+- [ ] T012 [P] Crear `src/main/java/gestor/modelo/EstadoProceso.java`: enum `PENDIENTE_LLEGADA, NUEVO, LISTO, EJECUCION, BLOQUEADO, TERMINADO` con `boolean puedeTransicionarA(EstadoProceso destino)` según el diagrama de data-model.md y `String etiqueta()` ("Pendiente de llegada", "Nuevo / Espera de memoria", "Listo", "En Ejecución", "Bloqueado", "Terminado")
+- [ ] T013 [P] Crear `src/main/java/gestor/modelo/EventoES.java`: record `(int enQuantum, int duracion)` — reglas (validadas en la entrada): "1 ≤ valor ≤ `tiempoRafaga`−1; estrictamente creciente en la lista" y "duracion ≥ 1"
+- [ ] T014 [P] Crear `src/main/java/gestor/modelo/DefinicionProceso.java`: record `(String id, int tiempoLlegada, int tiempoRafaga, int memoria, Integer prioridad, List<EventoES> bloqueosES, int ordenArchivo)`; constructor compacto que copia `bloqueosES` con `List.copyOf` (null → lista vacía)
+- [ ] T015 [P] Crear `src/main/java/gestor/modelo/ConfiguracionSimulacion.java`: record `(int memoriaTotal, int quantum, int maxAdelantamientos)` con constantes `MEMORIA_POR_DEFECTO = 1024`, `QUANTUM_POR_DEFECTO = 1`, `MAX_ADELANTAMIENTOS_POR_DEFECTO = 5`, fábrica `porDefecto()` y métodos `conQuantum(int)`, `conMemoriaTotal(int)`
+- [ ] T016 Crear `src/main/java/gestor/modelo/Escenario.java`: record `(ConfiguracionSimulacion configuracion, List<DefinicionProceso> procesos)` con copia inmutable de la lista (depende de T014, T015)
+- [ ] T017 Crear `src/main/java/gestor/modelo/Proceso.java` (PCB mutable) con los campos de data-model.md (`definicion`, `estado`, `ticksConsumidos`, `indiceSiguienteES`, `ticksQuantumUsados`, `finBloqueo`, el bloque asignado representado como `int baseBloque` e `int tamanoBloque` con `asignarBloque(int base, int tamano)`, `quitarBloque()` y `boolean tieneMemoria()` (así `modelo` no depende de `recursos`), `ticksEsperaListo`, `ticksEsperaMemoria`, `ticksES`, `adelantamientos`, `Integer instanteFinalizacion`), `void cambiarEstado(EstadoProceso destino)` que lanza `IllegalStateException("Transición inválida de <origen> a <destino> para el proceso <id>")`, y derivados `ticksRestantes()`, `tiempoEspera()`, `tiempoRetorno()`, `siguienteEventoES()` (Optional) — hace pasar T008 (depende de T012–T014)
+
+### Recurso de memoria (`gestor.recursos.memoria`)
+
+- [ ] T018 [P] Crear `src/main/java/gestor/recursos/memoria/Bloque.java`: record `(int base, int tamano, String idProceso)` con `int limite()` = `base + tamano − 1` y `boolean esHueco()` (`idProceso == null`)
+- [ ] T019 [P] Crear `src/main/java/gestor/recursos/memoria/PoliticaAsignacion.java`: interfaz `Optional<Bloque> elegirHueco(List<Bloque> huecos, int tamano)` y `String nombre()`
+- [ ] T020 Crear `src/main/java/gestor/recursos/memoria/MejorAjuste.java` (Best-Fit): "menor tamaño ≥ requerido; empate → menor base" (FR-014); `nombre()` = "Best-Fit" — hace pasar T010 (depende de T018, T019)
+- [ ] T021 Crear `src/main/java/gestor/recursos/memoria/MapaMemoria.java`: constructor `(int memoriaTotal, PoliticaAsignacion politica)`; lista ordenada por base; `Optional<Bloque> asignar(String id, int tamano)` (proceso al inicio del hueco elegido, sobrante como hueco); `void liberar(String id)` con fusión con hueco anterior y posterior (FR-016); `memoriaLibre()`, `mayorHueco()`, `fragmentacionExterna()`, `boolean cabe(int tamano)`, `Optional<Bloque> bloqueDe(String id)`, `List<Bloque> bloques()` (copia inmutable), `int total()` — hace pasar T009 (depende de T018–T020)
+
+### Recurso de CPU (`gestor.recursos.cpu`)
+
+- [ ] T022 [P] Crear `src/main/java/gestor/recursos/cpu/Planificador.java`: interfaz `void encolar(Proceso p)`, `Proceso siguiente()`, `boolean debeExpropiar(Proceso enEjecucion, int quantum)`, `List<Proceso> cola()`, `void vaciar()`, `String nombre()`
+- [ ] T023 Crear `src/main/java/gestor/recursos/cpu/PlanificadorRoundRobin.java` con `ArrayDeque<Proceso>`; `nombre()` = "Round Robin" — hace pasar T011 (depende de T017, T022)
+
+### Tipos base del motor (`gestor.motor`)
+
+- [ ] T024 [P] Crear `src/main/java/gestor/motor/EventoBitacora.java` (record `int instante, String idProceso, EstadoProceso origen, EstadoProceso destino, String motivo`) y `src/main/java/gestor/motor/Bitacora.java` (`registrar(...)`, `List<EventoBitacora> eventos()` inmutable, `vaciar()`)
+- [ ] T025 [P] Crear `src/main/java/gestor/motor/TramoGantt.java` (record `String idProceso` — null = ocioso —, `int inicio`, `int fin` exclusivo) y `src/main/java/gestor/motor/DiagramaGantt.java` con `registrarTick(int instante, String idProceso, boolean nuevoTurno)`: abre tramo nuevo si cambia el proceso o empieza un turno, extiende el último si no; agrupa ticks ociosos consecutivos; `List<TramoGantt> tramos()` inmutable
+
+**Checkpoint**: `.\scripts\probar.ps1` pasa T008–T011. Fundaciones listas.
+
+---
+
+## Phase 3: User Story 1 - Ejecutar una simulación Round Robin con E/S (Priority: P1) 🎯 MVP
+
+**Goal**: motor de ticks determinista que ejecuta un escenario con Round Robin expulsivo, E/S simulada y métricas, siguiendo exactamente el "Orden de eventos dentro de cada instante t" de la spec.
+
+**Independent Test**: las pruebas construyen `Escenario` en código (sin JSON) y comparan Gantt, instantes de finalización y métricas con los valores calculados a mano de la Historia 1.
+
+### Tests for User Story 1 ⚠️ (escribir primero, deben fallar)
+
+- [ ] T026 [P] [US1] Escribir `src/test/java/gestor/motor/MotorRoundRobinPrueba.java`: (a) escenario 1 de la Historia 1 — RAM 100, quantum 2, P1 (0, 4, 30 MB), P2 (1, 3, 20 MB) → Gantt P1[0–2) P2[2–4) P1[4–6) P2[6–7), finalizaciones 6 y 7, retornos 6 y 6, esperas 2 y 3; (b) escenario 4 — proceso que completa su ráfaga justo al agotar el quantum pasa a TERMINADO y no se reencola; (c) escenario 5 — en un mismo instante, orden de Listos: recién llegado, retornado de E/S, expropiado; (d) ningún proceso en el instante 0 → ticks ociosos agrupados en un tramo de Gantt con `idProceso` null; (e) llegadas simultáneas se encolan por `ordenArchivo`; (f) `cambiarQuantum` en curso se aplica desde el siguiente despacho; (g) la bitácora contiene `PENDIENTE_LLEGADA→NUEVO` y `NUEVO→LISTO` en el mismo instante para un proceso que cabe; (h) `finalizada()` es verdadero solo cuando todos están TERMINADO; (i) ejecutar el escenario dos veces produce bitácoras idénticas (FR-032)
+- [ ] T027 [P] [US1] Escribir `src/test/java/gestor/motor/MotorEntradaSalidaPrueba.java`: (a) escenario 2 de la Historia 1 — quantum 1, P1 (0, 3, 10 MB, E/S {enQuantum 1, duracion 2}) → corre tick 0, BLOQUEADO ticks 1–2 (CPU ociosa), LISTO en instante 3, termina en 5; retorno 5, espera 0, `ticksES` 2; (b) escenario 3 — quantum 3 y `enQuantum` 1 → abandona la CPU tras 1 tick sin agotar el quantum; (c) E/S y fin de quantum en el mismo tick → va a BLOQUEADO; (d) escenario 6 de la Historia 2 — el bloque de memoria es el mismo durante todo el bloqueo; (e) dos procesos bloqueados a la vez cumplen su E/S en paralelo; (f) varios eventos de E/S en un mismo proceso se aplican en orden; (g) `finBloqueo = fin del tick de la solicitud + duracion`
+- [ ] T028 [P] [US1] Escribir `src/test/java/gestor/motor/MetricasPrueba.java`: FR-027 retorno, FR-028 espera (incluye ticks en espera de memoria), FR-029 utilización = ticks CPU ocupada / instante final × 100 (escenario 1 → 100,0; escenario 2 → 60,0), FR-030 promedios (escenario 1 → espera 2,5; retorno 6,0); promedios `null` sin procesos terminados; utilización `null` en instante 0; invariante `retorno = tiempoRafaga + ticksES + tiempoEspera` para cada proceso terminado
+
+### Implementation for User Story 1
+
+- [ ] T029 [US1] Crear `src/main/java/gestor/motor/Motor.java`: constructor `(Escenario, PoliticaAsignacion, Planificador)` que crea los `Proceso` en `PENDIENTE_LLEGADA` y el `MapaMemoria`; `void avanzarTick()` con los pasos 1–7 de data-model.md (admisión en orden: espera de memoria y luego llegadas del instante por `ordenArchivo`; un proceso que no cabe queda en `NUEVO` en la cola `esperaMemoria` con motivo "Sin memoria contigua suficiente"; fin de E/S; expropiado pendiente; despacho; ejecución del tick con acumulación de `ticksEsperaListo`, `ticksEsperaMemoria`, `ticksES` y Gantt; evaluación con precedencia ráfaga completa → E/S → quantum, liberando memoria al terminar); motivos de bitácora en español según data-model.md ("Llegada", "Memoria asignada [b–l]", "Despacho", "Quantum agotado", "Solicita E/S (n ticks)", "Fin de E/S", "Ráfaga completada"); `cambiarQuantum(int q)` (q ≥ 1, si no `IllegalArgumentException`); getters de solo lectura `instanteActual()`, `finalizada()`, `ticksCpuOcupada()`, `procesos()`, `bitacora()`, `gantt()`, `mapaMemoria()` — hace pasar T026 y T027 (depende de Fase 2)
+- [ ] T030 [US1] Crear `src/main/java/gestor/motor/Metricas.java`: record `(Double esperaPromedio, Double retornoPromedio, Double utilizacionCpu, int terminados, int total)` con fábrica `calcular(List<Proceso>, int ticksCpuOcupada, int instanteActual)`; documentar en Javadoc las fórmulas FR-027–FR-030 exactamente como en la constitución; método `Metricas Motor.metricas()` — hace pasar T028
+
+**Checkpoint**: US1 completa — el motor reproduce los escenarios de referencia de la Historia 1 vía `.\scripts\probar.ps1`.
+
+---
+
+## Phase 4: User Story 2 - Administrar la RAM con partición variable Best-Fit (Priority: P1)
+
+**Goal**: integración completa de la memoria en el motor: cola de Espera de Memoria, admisión en el mismo instante de la liberación y límite de adelantamientos anti-inanición (FR-015a).
+
+**Independent Test**: escenarios con RAM pequeña y fragmentación, verificando instante de admisión, bloque asignado, contadores de adelantamientos e invariantes del mapa en cada tick.
+
+### Tests for User Story 2 ⚠️ (escribir primero, deben fallar)
+
+- [ ] T031 [P] [US2] Escribir `src/test/java/gestor/motor/MotorAdmisionMemoriaPrueba.java`: (a) escenario 4 — proceso de 60 MB con 70 MB libres pero mayor hueco de 40 MB queda en NUEVO y `fragmentacionExterna()` = 30; (b) escenario 5 — al terminar un proceso, el que espera se admite en ese mismo instante (paso 1) y pasa a LISTO; (c) cada admisión de un proceso posterior incrementa en 1 los `adelantamientos` de todos los anteriores que siguen esperando (incluidos adelantamientos por recién llegados); (d) escenario 7 — con G (80 MB) con 5 adelantamientos, un proceso de 10 MB que cabe (en espera o recién llegado) no se admite hasta que G entre, y el recién llegado se coloca al final de la Espera de Memoria; (e) procesos anteriores a G en la cola sí pueden admitirse; (f) `maxAdelantamientos` = 2 configurado en el escenario cambia el umbral; (g) tiempo de espera de un proceso incluye los ticks en Espera de Memoria; (h) tras cada tick de un escenario de 8 procesos se cumplen las invariantes de `MapaMemoriaPrueba.verificarInvariantes` (SC-007); (i) la memoria de un proceso TERMINADO queda liberada y fusionada
+
+### Implementation for User Story 2
+
+- [ ] T032 [US2] Reemplazar la admisión básica de `src/main/java/gestor/motor/Motor.java` por el algoritmo de research.md §7: lista de candidatos (espera de memoria por llegada + llegadas del instante por `ordenArchivo`), bandera `bloqueada`; si cabe → asignar con la política, `NUEVO→LISTO`, encolar y sumar 1 a `adelantamientos` de cada candidato anterior aún en espera; si alguno alcanza `maxAdelantamientos` → `bloqueada = true`; si no cabe y su contador ≥ `maxAdelantamientos` → `bloqueada = true`; los bloqueados por la bandera quedan/entran en `esperaMemoria` en orden; exponer `boolean esBloqueante(Proceso)` — hace pasar T031
+
+**Checkpoint**: US1 y US2 completas — el núcleo de SO está verificado de forma independiente de cualquier interfaz.
+
+---
+
+## Phase 5: User Story 5 - Cargar y validar el escenario desde `config.json` (Priority: P1)
+
+**Goal**: lector JSON propio y validación completa del escenario según `contracts/config-json.md`, con arranque del programa que rechaza archivos inválidos (código 1).
+
+**Independent Test**: archivos válidos producen el `Escenario` esperado; cada archivo de `src/test/recursos/invalidos/` se rechaza con mensaje que nombra proceso, campo y motivo.
+
+### Tests for User Story 5 ⚠️ (escribir primero, deben fallar)
+
+- [ ] T033 [P] [US5] Escribir `src/test/java/gestor/json/LectorJsonPrueba.java`: objetos (como `LinkedHashMap` que conserva el orden), arreglos, cadenas con escapes (`\"`, `\\`, `\n`, `\uXXXX`, tildes UTF-8), enteros (`Long`), negativos, decimales y exponentes (`Double`), `true`/`false`/`null`, espacios; errores con `ErrorJson` que informa "línea L, columna C" para: coma final, llave sin cerrar, cadena sin cerrar, contenido sobrante tras el valor raíz, documento vacío
+- [ ] T034 [P] [US5] Crear los archivos inválidos de la batería SC-002 en `src/test/recursos/invalidos/`: `json-mal-formado.json`, `procesos-vacio.json`, `sin-procesos.json`, `campo-faltante.json` (sin `tiempoRafaga`), `tipo-invalido.json` (`memoria: "200"`), `llegada-negativa.json`, `rafaga-cero.json`, `id-vacio.json`, `id-duplicado.json` (P1 dos veces), `memoria-excede.json` (2048 MB con total 1024), `enquantum-fuera-rango.json` (`enQuantum` = `tiempoRafaga`), `enquantum-no-creciente.json`, `duracion-cero.json`, `quantum-cero.json`, `max-adelantamientos-cero.json`; y válidos `src/test/recursos/validos/completo.json` (con `configuracion`, prioridad y E/S) y `src/test/recursos/validos/minimo.json` (sin `configuracion` ni campos opcionales)
+- [ ] T035 [P] [US5] Escribir `src/test/java/gestor/entrada/LectorEscenarioPrueba.java`: `completo.json` produce los valores exactos; `minimo.json` aplica defectos 1024 MB, quantum 1, `maxAdelantamientos` 5, `bloqueosES` vacía, `prioridad` null; cada archivo inválido de T034 lanza `ErrorConfiguracion` cuyo mensaje empieza por "Error en config.json:" y contiene la ubicación (p. ej. `procesos[1] (id "P1")`) y el motivo de `contracts/config-json.md`; un archivo con dos errores informa ambos; un campo desconocido no es error y genera una advertencia; archivo inexistente → `ErrorConfiguracion` "no se encontró el archivo <ruta>"
+
+### Implementation for User Story 5
+
+- [ ] T036 [US5] Crear `src/main/java/gestor/json/ErrorJson.java` (excepción con `linea`, `columna`) y `src/main/java/gestor/json/LectorJson.java`: analizador recursivo descendente `static Object leer(String texto)` que devuelve `Map<String,Object>`/`List<Object>`/`String`/`Long`/`Double`/`Boolean`/`null` — hace pasar T033
+- [ ] T037 [US5] Crear `src/main/java/gestor/entrada/ErrorConfiguracion.java` (excepción con `List<String> errores`; `getMessage()` los une con saltos de línea) y `src/main/java/gestor/entrada/LectorEscenario.java`: `Escenario leer(Path ruta)` y `Escenario leerTexto(String json)` que validan todas las reglas de la tabla de `contracts/config-json.md` (entre otras: "`id` no vacío, único", "`tiempoLlegada` ≥ 0", "`tiempoRafaga` ≥ 1", "`memoria` 1 … `memoriaTotal`", "`enQuantum` 1 … `tiempoRafaga`−1, estrictamente creciente", "`duracion` ≥ 1", "`memoriaTotal`, `quantum`, `maxAdelantamientos` ≥ 1", "al menos 1 proceso"), acumulan todos los errores antes de lanzar, asignan `ordenArchivo` y devuelven advertencias por campos desconocidos mediante `List<String> advertencias()` — hace pasar T035 (depende de T036)
+- [ ] T038 [US5] Crear `src/main/java/gestor/Principal.java`: interpreta `--config <ruta>` (defecto `config.json`) y `--puerto <n>` (defecto 8080; entero 0–65535, si no, error de uso); carga el escenario con `LectorEscenario`; ante `ErrorConfiguracion` imprime cada error en `System.err` y termina con `System.exit(1)`; imprime advertencias y un resumen ("Escenario cargado: N procesos, RAM M MB, quantum Q") (el arranque del servidor se añade en T050)
+- [ ] T039 [P] [US5] Crear los escenarios de `ejemplos/`: `referencia-rr.json` (escenario 1 de la Historia 1), `referencia-es.json` (escenario 2 de la Historia 1), `best-fit.json` (provoca huecos [0–49] y [70–99] y luego admite un proceso de 25 MB que va a [70–94]), `inanicion.json` (un proceso de 80 MB adelantado 5 veces por procesos pequeños), `carga-50.json` (50 procesos con E/S para SC-004) y `config.json` didáctico (6 procesos con E/S y espera de memoria); copiar `ejemplos/config.json` a `config.json` en la raíz
+
+**Checkpoint**: `.\scripts\iniciar.ps1 -Config .\src\test\recursos\invalidos\id-duplicado.json` muestra el error y termina con código 1.
+
+---
+
+## Phase 6: User Story 3 - Visualizar y controlar la simulación en el dashboard web (Priority: P2)
+
+**Goal**: controlador en tiempo real (iniciar, pausar, reiniciar, velocidad, quantum, RAM), API HTTP de `contracts/api-http.md` y dashboard HTML/CSS/JS Vanilla.
+
+**Independent Test**: pruebas del controlador y de la API con `java.net.http.HttpClient` contra el servidor en un puerto libre; verificación manual del dashboard con `quickstart.md` §2–3.
+
+### Tests for User Story 3 ⚠️ (escribir primero, deben fallar)
+
+- [ ] T040 [P] [US3] Escribir `src/test/java/gestor/json/EscritorJsonPrueba.java`: serializa `Map` (orden de inserción), `List`, `String` con escapes (`"`, `\`, control `\u0001`, salto de línea) y tildes sin escapar, enteros, decimales (`2.5`, `100.0`), booleanos y `null`; ida y vuelta con `LectorJson`
+- [ ] T041 [P] [US3] Escribir `src/test/java/gestor/motor/MotorInstantaneaPrueba.java`: la `Instantanea` refleja instante, colas (`nuevos` con `adelantamientos` y `bloqueante`, `listos` en orden, `ejecucion` con `ticksQuantumUsados` o null, `bloqueados` con `ticksRestantesES`, `terminados`), procesos con bloque `[base, limite, tamano]` o null, mapa de memoria con `libre`, `mayorHueco`, `fragmentacionExterna`, Gantt, bitácora y métricas; es inmutable (las listas lanzan `UnsupportedOperationException`) y no cambia al avanzar el motor
+- [ ] T042 [P] [US3] Escribir `src/test/java/gestor/motor/ControladorSimulacionPrueba.java` usando `avanzarManual()` (sin hilo): tabla de acciones de data-model.md (iniciar desde DETENIDA/PAUSADA; pausar solo EN_CURSO; iniciar en FINALIZADA lanza `IllegalStateException`); `cambiarMemoriaTotal` rechazado fuera de DETENIDA ("La capacidad de RAM solo puede modificarse antes de iniciar") y cuando un proceso no cabría (nombra el proceso); `cambiarVelocidad` fuera de 50–2000 rechazado; `cambiarQuantum(0)` rechazado; `reiniciar()` vuelve a instante 0 DETENIDA, vacía Gantt/bitácora y conserva quantum y RAM elegidos; si el proveedor del escenario falla, reinicia con el último escenario válido y deja `aviso` con el error; pasa a FINALIZADA cuando el motor termina; SC-006: con el hilo real a 50 ms, pausar/reanudar varias veces y cambiar la velocidad produce la misma bitácora que la ejecución manual
+- [ ] T043 [P] [US3] Escribir `src/test/java/gestor/interfaz/web/ApiHttpPrueba.java` con `HttpClient` contra `ServidorWeb` en puerto 0 (aleatorio): `GET /api/estado` 200 con `Content-Type: application/json; charset=utf-8` y los campos de `contracts/api-http.md`; `GET /api/proceso/P1` 200; `GET /api/proceso/P9` 404 `PROCESO_NO_EXISTE` con mensaje "El proceso 'P9' no existe"; `POST /api/control/iniciar|pausar|reiniciar`; 409 `TRANSICION_INVALIDA`; `POST /api/configuracion` con valor inválido → 400 `VALOR_INVALIDO` sin aplicar ningún campo, RAM en curso → 409 `MEMORIA_NO_EDITABLE`, RAM insuficiente → 409 `MEMORIA_INSUFICIENTE`; `GET /api/estado` con POST → 405; `GET /` sirve `index.html`; ruta desconocida → 404; el servidor solo escucha en loopback
+
+### Implementation for User Story 3
+
+- [ ] T044 [US3] Crear `src/main/java/gestor/json/EscritorJson.java`: `static String escribir(Object valor)` para `Map`, `List`, `String`, `Number`, `Boolean`, `null` — hace pasar T040
+- [ ] T045 [US3] Crear `src/main/java/gestor/motor/Instantanea.java` con records anidados inmutables (`ProcesoEnEspera`, `ProcesoEnEjecucion`, `ProcesoBloqueado`, `ResumenProceso`, `BloqueMemoria`, `EstadoMemoria`, `Colas`) y el método `Instantanea Motor.instantanea()` en `src/main/java/gestor/motor/Motor.java` — hace pasar T041
+- [ ] T046 [US3] Crear `src/main/java/gestor/motor/ModoSimulacion.java` (enum `DETENIDA, EN_CURSO, PAUSADA, FINALIZADA`) y `src/main/java/gestor/motor/ControladorSimulacion.java`: constructor `(Supplier<Escenario> proveedor)`; todas las operaciones `synchronized` sobre el mismo monitor; hilo daemon "reloj-simulacion" que en EN_CURSO llama `avanzarTick()` cada `velocidadMs` (defecto 500, rango 50–2000) y pasa a FINALIZADA al terminar; `iniciar`, `pausar`, `reiniciar`, `cambiarQuantum`, `cambiarMemoriaTotal`, `cambiarVelocidad`, `avanzarManual()` (para pruebas), `instantanea()` que añade modo, velocidad y `aviso`; `detener()` para cerrar el hilo — hace pasar T042 (depende de T045)
+- [ ] T047 [US3] Crear `src/main/java/gestor/interfaz/web/ConvertidorInstantanea.java`: convierte `Instantanea` y su `ResumenProceso` a `Map`/`List` con los nombres de campo exactos de `contracts/api-http.md` (`instante`, `modo`, `configuracion`, `colas`, `procesos`, `memoria`, `gantt`, `bitacora`, `metricas`, `aviso`)
+- [ ] T048 [US3] Crear `src/main/java/gestor/interfaz/web/ManejadorEstaticos.java` (sirve `/`→`/web/index.html`, `/estilos.css`, `/app.js` desde el classpath con el tipo MIME y `charset=utf-8`; 404 en otro caso) y `src/main/java/gestor/interfaz/web/ManejadorApi.java` (rutas, métodos, códigos y cuerpos de error `{ "error", "mensaje" }` de `contracts/api-http.md`; valida todo el cuerpo de `/api/configuracion` antes de aplicar; lee el cuerpo como UTF-8 con `LectorJson`)
+- [ ] T049 [US3] Crear `src/main/java/gestor/interfaz/web/ServidorWeb.java`: `HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), puerto), 0)`, ejecutor `Executors.newFixedThreadPool(4)`, contextos `/api/` y `/`; `iniciar()`, `detener()`, `int puerto()` (para el puerto 0); si el puerto está ocupado lanza excepción con "El puerto <n> ya está en uso" — hace pasar T043 (depende de T044, T046–T048)
+- [ ] T050 [US3] Ampliar `src/main/java/gestor/Principal.java`: crea `ControladorSimulacion` con un proveedor que relee el archivo `--config` en cada reinicio, arranca `ServidorWeb`, imprime "Simulador disponible en http://localhost:<puerto>"; si el puerto está ocupado imprime el error y `System.exit(1)`
+- [ ] T051 [P] [US3] Crear `src/main/resources/web/index.html` (HTML5, `lang="es"`, UTF-8): cabecera con instante y modo; panel de control (botones Iniciar/Reanudar, Pausar, Reiniciar; deslizante de velocidad 50–2000 ms con valor visible; campos numéricos de quantum y RAM con botón Aplicar; zona de mensajes); secciones para las colas Nuevos/Espera de RAM, Listos, En CPU, Bloqueados, Terminados; mapa de RAM; Gantt; tabla de métricas por proceso y resumen global; bitácora
+- [ ] T052 [P] [US3] Crear `src/main/resources/web/estilos.css`: diseño en rejilla adaptable, colores por proceso (generados en JS a partir del id), huecos de RAM rayados, tramos ociosos del Gantt en gris, estados de botón deshabilitado, mensajes de error visibles, legible en pantallas de 1280 px y en proyector
+- [ ] T053 [US3] Crear `src/main/resources/web/app.js` (JavaScript Vanilla, sin dependencias): sondeo `fetch('/api/estado')` cada 200 ms; renderiza colas, CPU (con ticks de quantum usados), mapa de RAM proporcional con base–límite por bloque y tamaño de huecos, Gantt acumulativo con escala de instantes, métricas (2 decimales para promedios, 1 decimal para % CPU, separador decimal coma), bitácora (los más recientes primero); acciones `POST` a `/api/control/*` y `/api/configuracion`; habilita/deshabilita botones y el campo de RAM según `modo`; muestra `mensaje` de errores y `aviso`; si el servidor no responde, muestra "Sin conexión con el simulador" y reintenta
+
+**Checkpoint**: US3 completa — `quickstart.md` §2 y §3 se cumplen en el navegador.
+
+---
+
+## Phase 7: User Story 4 - Consultar un proceso desde PowerShell (Priority: P2)
+
+**Goal**: script `gestor.ps1` según `contracts/cli-gestor.md` que consulta la API local.
+
+**Independent Test**: con el simulador en ejecución, el script de prueba invoca `gestor.ps1` en cada caso de la tabla del contrato y verifica la salida y `$LASTEXITCODE`.
+
+**Dependencia**: requiere la API de US3 (T049–T050).
+
+### Tests for User Story 4 ⚠️ (escribir primero, deben fallar)
+
+- [ ] T054 [P] [US4] Crear `scripts/probar-cli.ps1`: compila, arranca `java -jar build/gestor-procesos.jar --config ejemplos/referencia-rr.json --puerto 18080` en segundo plano, espera a que `/api/estado` responda y verifica: sin argumento → código 1 y texto "Uso:"; `P9` → código 2 y "no existe"; `P2` antes de iniciar → código 0 o mensaje de pendiente según su llegada; tras `POST /api/configuracion {velocidadMs:50}` e iniciar y esperar a FINALIZADA, `P1` → código 3 y "ya finalizó su ciclo de vida (terminó en el instante 6)"; con un escenario en curso pausado, la ficha muestra "Estado", "Quantums consumidos", "Quantums restantes", "Bloque de RAM", "Tiempo de espera"; tras detener el proceso Java → código 4 y "no se pudo conectar"; imprime resumen y termina con código ≠ 0 si algo falla; siempre detiene el proceso Java al final
+
+### Implementation for User Story 4
+
+- [ ] T055 [US4] Crear `gestor.ps1` en la raíz (**UTF-8 con BOM**, compatible con PowerShell 5.1 y 7): `param([Parameter(Position=0)][string]$IdProceso, [int]$Puerto = 8080)`; sin argumento → uso y `exit 1`; `Invoke-WebRequest -UseBasicParsing -TimeoutSec 5` a `http://localhost:$Puerto/api/proceso/<id codificado>`; decodifica el cuerpo como UTF-8 desde los bytes (`RawContentStream`) y `ConvertFrom-Json`; en 404 lee el cuerpo de la respuesta de error → `exit 2`; `TERMINADO` → mensaje con `instanteFinalizacion` → `exit 3`; error de conexión → `exit 4`; otro código HTTP → `exit 5`; `PENDIENTE_LLEGADA` → mensaje con instante de llegada y `exit 0`; en otro caso imprime la ficha con el formato exacto de `contracts/cli-gestor.md` (etiquetas de estado en español, "sin asignar (esperando memoria)", línea de E/S restante en Bloqueado, línea de bloqueante) y `exit 0`; errores por `[Console]::Error.WriteLine` — hace pasar T054
+
+**Checkpoint**: todas las historias funcionan de forma independiente.
+
+---
+
+## Phase 8: Polish & Cross-Cutting Concerns
+
+**Purpose**: documentación, verificación de la constitución y validación final
+
+- [ ] T056 [P] Crear `scripts/verificar-capas.ps1`: falla (código 1) si algún archivo de `src/main/java/gestor/{modelo,recursos,motor}` importa `gestor.interfaz`, `gestor.entrada`, `gestor.json`, `com.sun.net.httpserver`, `java.net` o `java.io`/`java.nio.file`, si `gestor/recursos` importa `gestor.motor`, o si cualquier archivo importa paquetes fuera de `java.`, `javax.`, `com.sun.net.httpserver` y `gestor.`; invocarlo al final de `scripts/probar.ps1`
+- [ ] T057 [P] Crear `README.md` en español: propósito, requisitos (solo JDK 21), compilar/probar/iniciar, formato de `config.json` (enlace a `specs/001-simulador-procesos-memoria/contracts/config-json.md`), uso de `gestor.ps1`, modelo de tiempo y orden de eventos, fórmulas de métricas, estructura de capas
+- [ ] T058 [P] Revisar que todas las clases y métodos públicos de `src/main/java/gestor/` tengan Javadoc en español y que no queden identificadores, comentarios o mensajes en inglés (salvo palabras reservadas y APIs del JDK)
+- [ ] T059 Prueba de rendimiento SC-004 en `src/test/java/gestor/motor/RendimientoPrueba.java`: con `ejemplos/carga-50.json`, 2 000 llamadas a `avanzarTick()` + `instantanea()` + `EscritorJson` tardan en promedio < 10 ms por tick
+- [ ] T060 Ejecutar la validación completa de `specs/001-simulador-procesos-memoria/quickstart.md` (§1–§5), incluido `scripts/probar-cli.ps1`, y corregir cualquier desviación
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Setup (Phase 1)**: sin dependencias.
+- **Foundational (Phase 2)**: depende de Setup; BLOQUEA todas las historias.
+- **US1 (Phase 3)**: depende de Fase 2.
+- **US2 (Phase 4)**: depende de US1 (modifica la admisión de `Motor.java`).
+- **US5 (Phase 5)**: depende solo de Fase 2 (modelo); puede ir en paralelo con US1/US2.
+- **US3 (Phase 6)**: depende de US1 (motor) y US5 (`Principal`, carga del escenario); se beneficia de US2.
+- **US4 (Phase 7)**: depende de US3 (API HTTP).
+- **Polish (Phase 8)**: depende de todas las historias.
+
+### Grafo de historias
+
+```text
+Setup → Fundacional ─┬─ US1 → US2 ─┐
+                     └─ US5 ───────┴─ US3 → US4 → Pulido
+```
+
+### Within Each User Story
+
+- Las pruebas se escriben primero y deben FALLAR antes de implementar (Principio VI).
+- Modelo → recursos → motor → interfaz.
+- Ejecutar `.\scripts\probar.ps1` al cerrar cada tarea de implementación.
+
+### Parallel Opportunities
+
+- Setup: T002–T006 en paralelo.
+- Fundacional: pruebas T008–T011 en paralelo; luego T012–T015, T018, T019, T022, T024, T025 en paralelo.
+- US1: T026, T027, T028 en paralelo.
+- US5 completa en paralelo con US1/US2 (archivos distintos); dentro de US5, T033, T034, T035, T039 en paralelo.
+- US3: pruebas T040–T043 en paralelo; T051 y T052 en paralelo con el backend.
+- Pulido: T056, T057, T058 en paralelo.
+
+---
+
+## Parallel Example: User Story 1
+
+```text
+# Pruebas de US1 en paralelo (archivos distintos):
+Task: "Escribir MotorRoundRobinPrueba en src/test/java/gestor/motor/MotorRoundRobinPrueba.java"
+Task: "Escribir MotorEntradaSalidaPrueba en src/test/java/gestor/motor/MotorEntradaSalidaPrueba.java"
+Task: "Escribir MetricasPrueba en src/test/java/gestor/motor/MetricasPrueba.java"
+```
+
+## Parallel Example: User Story 5 (en paralelo con US1)
+
+```text
+Task: "Escribir LectorJsonPrueba en src/test/java/gestor/json/LectorJsonPrueba.java"
+Task: "Crear batería de inválidos en src/test/recursos/invalidos/"
+Task: "Escribir LectorEscenarioPrueba en src/test/java/gestor/entrada/LectorEscenarioPrueba.java"
+Task: "Crear escenarios en ejemplos/"
+```
+
+## Parallel Example: User Story 3
+
+```text
+Task: "Escribir EscritorJsonPrueba", "MotorInstantaneaPrueba", "ControladorSimulacionPrueba", "ApiHttpPrueba"
+Task: "Crear src/main/resources/web/index.html" y "src/main/resources/web/estilos.css"
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (User Story 1 Only)
+
+1. Fase 1 (Setup) y Fase 2 (Fundacional).
+2. Fase 3 (US1): el motor RR + E/S verificado con los escenarios de referencia.
+3. **STOP and VALIDATE**: `.\scripts\probar.ps1` en verde → ya sirve para corregir ejercicios de clase.
+
+### Incremental Delivery
+
+1. Setup + Fundacional → base lista.
+2. US1 → motor RR + E/S (MVP).
+3. US2 → memoria completa con anti-inanición.
+4. US5 → escenarios desde `config.json`.
+5. US3 → dashboard en tiempo real (primera versión utilizable por estudiantes).
+6. US4 → CLI PowerShell.
+7. Pulido → verificación de capas, README, rendimiento, quickstart.
+
+---
+
+## Notes
+
+- [P] = archivos distintos y sin dependencias pendientes.
+- Las etiquetas [USn] trazan cada tarea con su historia de la spec.
+- Verificar que cada prueba falle antes de implementar.
+- Hacer commit tras cada tarea o grupo lógico.
+- Evitar tareas vagas, conflictos en el mismo archivo y dependencias entre historias no documentadas.
