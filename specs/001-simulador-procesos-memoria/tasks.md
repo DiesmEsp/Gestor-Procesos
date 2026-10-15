@@ -140,7 +140,7 @@ la E/S en paralelo, el determinismo y la invariante del tiempo de retorno.
 **Consultas de US1**: `bitacora()` y `gantt()` devuelven listas inmutables de registros;
 `procesos()` devuelve una lista inmodificable de copias de los PCB y `mapaMemoria()` devuelve
 una copia separada. Modificar estas copias no altera el motor; las consultas previas se
-mantienen estables entre ticks. La admisión básica se ampliará en T036–T037 con FR-015a.
+mantienen estables entre ticks. La admisión básica se amplió en T036–T037 con FR-015a.
 
 ---
 
@@ -152,13 +152,24 @@ mantienen estables entre ticks. La admisión básica se ampliará en T036–T037
 
 ### Tests for User Story 2 ⚠️ (escribir primero, deben fallar)
 
-- [ ] T036 [P] [US2] Escribir `src/test/java/gestor/motor/MotorAdmisionMemoriaPrueba.java`: (a) escenario 4 — proceso de 60 MB con 70 MB libres pero mayor hueco de 40 MB queda en NUEVO y `fragmentacionExterna()` = 30; (b) escenario 5 — al terminar un proceso, el que espera se admite en ese mismo instante (paso 1) y pasa a LISTO; (c) cada admisión de un proceso posterior incrementa en 1 los `adelantamientos` de todos los anteriores que siguen esperando (incluidos adelantamientos por recién llegados); (d) escenario 7 — con G (80 MB) con 5 adelantamientos, un proceso de 10 MB que cabe (en espera o recién llegado) no se admite hasta que G entre, y el recién llegado se coloca al final de la Espera de Memoria; (e) procesos anteriores a G en la cola sí pueden admitirse; (f) `maxAdelantamientos` = 2 configurado en el escenario cambia el umbral; (g) tiempo de espera de un proceso incluye los ticks en Espera de Memoria; (h) tras cada tick de un escenario de 8 procesos se cumplen las invariantes de `InvariantesMemoria.verificar` (SC-007); (i) la memoria de un proceso TERMINADO queda liberada y fusionada; (j) el mismo escenario que produce los huecos [0–49] y [70–99] da [70–94] con `politicaMemoria` BEST_FIT y [0–24] con FIRST_FIT (escenarios 1 y 8), construyendo el motor con `FabricaRecursos.crearPolitica`
+- [x] T036 [P] [US2] Escribir `src/test/java/gestor/motor/MotorAdmisionMemoriaPrueba.java`: (a) escenario 4 — proceso de 60 MB con 70 MB libres pero mayor hueco de 40 MB queda en NUEVO y `fragmentacionExterna()` = 30; (b) escenario 5 — al terminar un proceso, el que espera se admite en ese mismo instante (paso 1) y pasa a LISTO; (c) cada admisión de un proceso posterior incrementa en 1 los `adelantamientos` de todos los anteriores que siguen esperando (incluidos adelantamientos por recién llegados); (d) escenario 7 — con G (80 MB) con 5 adelantamientos, un proceso de 10 MB que cabe (en espera o recién llegado) no se admite hasta que G entre, y el recién llegado se coloca al final de la Espera de Memoria; (e) procesos anteriores a G en la cola sí pueden admitirse; (f) `maxAdelantamientos` = 2 configurado en el escenario cambia el umbral; (g) tiempo de espera de un proceso incluye los ticks en Espera de Memoria; (h) tras cada tick de un escenario de 8 procesos se cumplen las invariantes de `InvariantesMemoria.verificar` (SC-007); (i) la memoria de un proceso TERMINADO queda liberada y fusionada; (j) el mismo escenario que produce los huecos [0–49] y [70–99] da [70–94] con `politicaMemoria` BEST_FIT y [0–24] con FIRST_FIT (escenarios 1 y 8), construyendo el motor con `FabricaRecursos.crearPolitica`
 
 ### Implementation for User Story 2
 
-- [ ] T037 [US2] Reemplazar la admisión básica de `src/main/java/gestor/motor/Motor.java` por el algoritmo de research.md §7: lista de candidatos (espera de memoria por llegada + llegadas del instante por `ordenArchivo`), bandera `bloqueada`; si cabe → asignar con la política, `NUEVO→LISTO`, encolar y sumar 1 a `adelantamientos` de cada candidato anterior aún en espera; si alguno alcanza `maxAdelantamientos` → `bloqueada = true`; si no cabe y su contador ≥ `maxAdelantamientos` → `bloqueada = true`; los bloqueados por la bandera quedan/entran en `esperaMemoria` en orden; exponer `boolean esBloqueante(Proceso)` — hace pasar T036
+- [x] T037 [US2] Reemplazar la admisión básica de `src/main/java/gestor/motor/Motor.java` por el algoritmo de research.md §7: lista de candidatos (espera de memoria por llegada + llegadas del instante por `ordenArchivo`), bandera `bloqueada`; si cabe → asignar con la política, `NUEVO→LISTO`, encolar y sumar 1 a `adelantamientos` de cada candidato anterior aún en espera; si alguno alcanza `maxAdelantamientos` → `bloqueada = true`; si no cabe y su contador ≥ `maxAdelantamientos` → `bloqueada = true`; los bloqueados por la bandera quedan/entran en `esperaMemoria` en orden; exponer `boolean esBloqueante(Proceso)` — hace pasar T036
 
 **Checkpoint**: US1 y US2 completas — el núcleo de SO está verificado de forma independiente de cualquier interfaz.
+
+**Verificación TDD de US2**: T036 añade 12 pruebas. Con la consulta `esBloqueante` disponible
+y la admisión anterior se observaron `87 pruebas, 5 fallidas` (código 1) por ausencia del
+cálculo de adelantamientos. Tras T037, la batería completa reporta `87 pruebas, 0 fallidas`
+y código de salida 0, conservando sin cambios las 75 pruebas anteriores.
+
+Se verificaron fragmentación externa, admisión en el instante de liberación, adelantamientos
+desde la cola y desde nuevas llegadas, límites 5 y 2, bloqueo dentro del mismo recorrido,
+admisión de anteriores al protegido y reanudación ordenada de los posteriores al entrar este.
+Las invariantes se comprueban tras cada tick, incluido un escenario de ocho procesos.
+Best-Fit y First-Fit reproducen las asignaciones de los escenarios 1 y 8 de la Historia 2.
 
 ---
 

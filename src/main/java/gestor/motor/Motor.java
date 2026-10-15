@@ -49,8 +49,7 @@ public final class Motor {
             return;
         }
 
-        admitirEnEspera();                     // 1. Espera de memoria anterior a las llegadas.
-        recibirLlegadas();                    // 2. Llegadas simultáneas por ordenArchivo.
+        admitirCandidatos();                   // 1 y 2. Espera anterior y llegadas con protección anti-inanición.
         completarEntradaSalida();             // 3. Retornos en orden de bloqueo.
         reencolarExpropiado();                 // 4. Expropiado al final de la cola de Listos.
         boolean nuevoTurno = despachar();      // 5. Quantum fijado al despachar.
@@ -66,27 +65,42 @@ public final class Motor {
         configuracion = configuracion.conQuantum(quantum);
     }
 
-    private void admitirEnEspera() {
-        var pendientes = esperaMemoria.iterator();
-        while (pendientes.hasNext()) {
-            if (admitir(pendientes.next())) {
-                pendientes.remove();
-            }
-        }
-    }
-
-    private void recibirLlegadas() {
+    /** Aplica research.md §7: solo los candidatos anteriores aún en espera pueden ser adelantados. */
+    private void admitirCandidatos() {
+        List<Proceso> candidatos = new ArrayList<>(esperaMemoria);
         List<Proceso> llegadas = procesos.stream()
                 .filter(proceso -> proceso.estado() == EstadoProceso.PENDIENTE_LLEGADA
                         && proceso.definicion().tiempoLlegada() == instanteActual)
                 .sorted(Comparator.comparingInt(proceso -> proceso.definicion().ordenArchivo())).toList();
-        for (Proceso proceso : llegadas) {
-            transicionar(proceso, EstadoProceso.NUEVO, instanteActual, "Llegada");
-            if (!admitir(proceso)) {
-                esperaMemoria.add(proceso);
-                // Evento informativo de espera; no solicita una transición NUEVO -> NUEVO al PCB.
+        candidatos.addAll(llegadas);
+        esperaMemoria.clear();
+        boolean bloqueada = false;
+
+        for (Proceso proceso : candidatos) {
+            boolean recienLlegado = proceso.estado() == EstadoProceso.PENDIENTE_LLEGADA;
+            if (recienLlegado) {
+                transicionar(proceso, EstadoProceso.NUEVO, instanteActual, "Llegada");
+            }
+            if (!bloqueada && admitir(proceso)) {
+                // La cola reconstruida contiene únicamente candidatos anteriores que todavía no caben.
+                for (Proceso anterior : esperaMemoria) {
+                    anterior.fijarAdelantamientos(anterior.adelantamientos() + 1);
+                    if (esBloqueante(anterior)) {
+                        bloqueada = true;
+                    }
+                }
+                continue;
+            }
+
+            esperaMemoria.add(proceso);
+            if (recienLlegado) {
+                String motivo = bloqueada ? "Admisión detenida por proceso bloqueante" : "Sin memoria contigua suficiente";
+                // La espera informa su causa sin solicitar una transición NUEVO -> NUEVO al PCB.
                 bitacora.registrar(instanteActual, proceso.definicion().id(), EstadoProceso.NUEVO,
-                        EstadoProceso.NUEVO, "Sin memoria contigua suficiente");
+                        EstadoProceso.NUEVO, motivo);
+            }
+            if (esBloqueante(proceso)) {
+                bloqueada = true;
             }
         }
     }
@@ -204,6 +218,13 @@ public final class Motor {
 
     public int ticksCpuOcupada() {
         return ticksCpuOcupada;
+    }
+
+    /** FR-015a: la protección solo está activa mientras el proceso espera memoria en NUEVO. */
+    public boolean esBloqueante(Proceso proceso) {
+        Objects.requireNonNull(proceso, "El proceso consultado no puede ser nulo");
+        return proceso.estado() == EstadoProceso.NUEVO
+                && proceso.adelantamientos() >= configuracion.maxAdelantamientos();
     }
 
     /** Lista inmodificable de copias separadas de los PCB, estable entre ticks. */
