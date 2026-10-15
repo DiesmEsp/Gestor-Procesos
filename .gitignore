@@ -1,0 +1,18 @@
+# Salida de compilación
+build/
+out/
+*.class
+*.jar
+
+# Editores e IDE
+.idea/
+.vscode/
+*.iml
+
+# Sistema operativo
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Configuración local de Claude Code
+.claude/settings.local.json
