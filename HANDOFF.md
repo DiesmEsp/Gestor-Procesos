@@ -5,10 +5,11 @@ variable con Best-Fit) para Sistemas Operativos, con dashboard web y CLI PowerSh
 
 ## Estado actual
 
-- **Fases completadas**: diseño con Spec Kit y Lote 1, Setup e Infraestructura (**T001–T007**).
-  Estructura, scripts PowerShell y micro-framework de pruebas disponibles, sin dependencias externas.
-  `.\scripts\probar.ps1` reporta **0 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
-- **Siguiente paso**: tarea **T008** de
+- **Fases completadas**: diseño con Spec Kit, infraestructura y fundaciones (**T001–T030**).
+  Modelo, memoria Best-Fit/First-Fit, CPU Round Robin, fábrica, bitácora y Gantt implementados,
+  sin dependencias externas y respetando las capas del plan.
+  `.\scripts\probar.ps1` reporta **47 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
+- **Siguiente paso**: tarea **T031**, pruebas del motor antes de su implementación, de
   [`specs/001-simulador-procesos-memoria/tasks.md`](specs/001-simulador-procesos-memoria/tasks.md).
 
 ## Documentos clave (leer en este orden)
