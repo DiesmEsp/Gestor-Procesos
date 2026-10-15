@@ -28,7 +28,7 @@ Abrir `http://localhost:8080`, pulsar **Iniciar**. Esperado al finalizar (instan
 - Métricas: espera promedio 2,50; retorno promedio 6,00; CPU 100,0 %.
 
 Otros escenarios en `ejemplos/`: `referencia-es.json` (E/S, CPU 60,0 %), `best-fit.json`
-(hueco elegido [70–94]), `inanicion.json` (proceso bloqueante tras 5 adelantamientos),
+(hueco elegido [70–94]), `first-fit.json` (mismo escenario con First-Fit: bloque [0–24]), `inanicion.json` (proceso bloqueante tras 5 adelantamientos),
 `config.json` (escenario didáctico general).
 
 ## 3. Controles del dashboard
@@ -39,7 +39,9 @@ Otros escenarios en `ejemplos/`: `referencia-es.json` (E/S, CPU 60,0 %), `best-f
 | Mover el control de velocidad a 50 ms | la vista sigue cada tick; el resultado final no cambia |
 | Cambiar quantum a 3 en curso | los siguientes despachos usan 3 ticks |
 | Cambiar RAM en curso | rechazado: "La capacidad de RAM solo puede modificarse antes de iniciar" |
-| Reiniciar | instante 0, detenida, Gantt y bitácora vacíos, quantum/RAM elegidos conservados |
+| Cambiar la política a First-Fit en el instante 0 con `best-fit.json` e iniciar | el proceso de 25 MB recibe [0–24] |
+| Cambiar la política en curso | rechazado, igual que la RAM |
+| Reiniciar | instante 0, detenida, Gantt y bitácora vacíos, quantum/RAM/política elegidos conservados |
 
 ## 4. CLI
 

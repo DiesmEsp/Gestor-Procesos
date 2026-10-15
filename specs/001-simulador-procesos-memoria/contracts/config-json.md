@@ -7,7 +7,9 @@ Codificación UTF-8. Ruta por defecto `./config.json`; otra con `--config <ruta>
   "configuracion": {
     "memoriaTotal": 1024,
     "quantum": 1,
-    "maxAdelantamientos": 5
+    "maxAdelantamientos": 5,
+    "politicaMemoria": "BEST_FIT",
+    "planificador": "ROUND_ROBIN"
   },
   "procesos": [
     {
@@ -29,6 +31,8 @@ Codificación UTF-8. Ruta por defecto `./config.json`; otra con `--config <ruta>
 | `configuracion.memoriaTotal` | entero | no | ≥ 1 (MB), defecto 1024 |
 | `configuracion.quantum` | entero | no | ≥ 1 (ticks), defecto 1 |
 | `configuracion.maxAdelantamientos` | entero | no | ≥ 1, defecto 5 |
+| `configuracion.politicaMemoria` | texto | no | `BEST_FIT` (defecto) o `FIRST_FIT`; distingue mayúsculas |
+| `configuracion.planificador` | texto | no | `ROUND_ROBIN` (defecto; único valor admitido en esta versión) |
 | `procesos` | arreglo | sí | al menos 1 elemento |
 | `procesos[].id` | texto | sí | no vacío, único |
 | `procesos[].tiempoLlegada` | entero | sí | ≥ 0 |
@@ -50,5 +54,7 @@ Formato del mensaje: `Error en config.json: <ubicación>: <motivo>`. Ejemplos:
 - `Error en config.json: procesos[0] (id "P1").memoria: 2048 MB excede la memoria total (1024 MB); el proceso nunca podría alojarse`
 - `Error en config.json: procesos[1] (id "P2").bloqueosES[1].enQuantum: debe ser mayor que el anterior (2)`
 - `Error en config.json: procesos: la lista de procesos está vacía`
+- `Error en config.json: configuracion.politicaMemoria: valor "WORST_FIT" no admitido; valores válidos: BEST_FIT, FIRST_FIT`
+- `Error en config.json: configuracion.planificador: valor "FCFS" no admitido; valores válidos: ROUND_ROBIN`
 
 Con errores, el simulador termina con código de salida 1 sin abrir el servidor.

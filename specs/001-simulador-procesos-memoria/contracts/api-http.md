@@ -18,7 +18,10 @@ cuerpo `{ "error": "<CODIGO>", "mensaje": "<texto en español>" }`.
 {
   "instante": 7,
   "modo": "FINALIZADA",
-  "configuracion": { "memoriaTotal": 100, "quantum": 2, "maxAdelantamientos": 5, "velocidadMs": 500 },
+  "configuracion": {
+    "memoriaTotal": 100, "quantum": 2, "maxAdelantamientos": 5, "velocidadMs": 500,
+    "politicaMemoria": "BEST_FIT", "planificador": "ROUND_ROBIN"
+  },
   "colas": {
     "nuevos":     [ { "id": "P5", "memoria": 60, "adelantamientos": 2, "bloqueante": false } ],
     "listos":     [ "P3", "P1" ],
@@ -65,7 +68,10 @@ de una simulación real. `ejecucion` es `null` si la CPU está ociosa; `bloque` 
 | POST | `/api/control/iniciar` | — | instantánea | 409 `TRANSICION_INVALIDA` (p. ej. ya finalizada) |
 | POST | `/api/control/pausar` | — | instantánea | 409 `TRANSICION_INVALIDA` |
 | POST | `/api/control/reiniciar` | — | instantánea (con `aviso` si el archivo no era válido) | — |
-| POST | `/api/configuracion` | `{ "quantum"?: int, "memoriaTotal"?: int, "velocidadMs"?: int }` | instantánea | 400 `VALOR_INVALIDO`; 409 `MEMORIA_NO_EDITABLE` (simulación iniciada); 409 `MEMORIA_INSUFICIENTE` (algún proceso no cabría) |
+| POST | `/api/configuracion` | `{ "quantum"?: int, "memoriaTotal"?: int, "velocidadMs"?: int, "politicaMemoria"?: "BEST_FIT" \| "FIRST_FIT" }` | instantánea | 400 `VALOR_INVALIDO` (incluye política desconocida); 409 `MEMORIA_NO_EDITABLE` (RAM o política con la simulación iniciada); 409 `MEMORIA_INSUFICIENTE` (algún proceso no cabría) |
+
+El planificador no se puede cambiar desde la API: se fija en `config.json` y solo se informa en
+`configuracion.planificador`.
 
 La configuración se valida completa antes de aplicar: si un campo es inválido no se aplica ninguno.
 Método distinto del indicado → 405 `METODO_NO_PERMITIDO`.

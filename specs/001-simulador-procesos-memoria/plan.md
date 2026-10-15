@@ -10,7 +10,8 @@
 
 Simulador educativo que carga procesos desde `config.json`, los ejecuta con un motor de ticks
 discretos y deterministas (Round Robin expulsivo con E/S simulada) sobre una RAM de partición
-variable con Best-Fit, fusión de huecos y límite de 5 adelantamientos en la espera de memoria.
+variable con Best-Fit o First-Fit seleccionable, fusión de huecos y límite de 5 adelantamientos en
+la espera de memoria.
 Se expone por un dashboard web (HTML/CSS/JS Vanilla servido por `HttpServer` del JDK con sondeo
 JSON) y por un script `gestor.ps1` que consulta la API local. Todo con Java 21 y la biblioteca
 estándar; construcción con scripts PowerShell (`javac`/`jar`) y micro-framework de pruebas propio.
@@ -49,18 +50,18 @@ y varios observadores.
 |---|---|---|
 | I. Stack estándar, cero dependencias | Java 21 + JDK únicamente; `HttpServer` nativo; frontend Vanilla sin CDN; JSON propio; pruebas sin JUnit (ni siquiera se usa la excepción permitida) | ✅ |
 | II. Arquitectura en capas | `motor` → `recursos` → `modelo`; `entrada` → `modelo`, `json`; `interfaz.web` → `motor`, `json`. Motor y recursos sin E/S. Tick determinista sin hilos; hilo de reloj y lecturas sincronizados en `ControladorSimulacion` | ✅ |
-| III. Gestión de recursos | `Planificador` (Estrategia) con RR; ciclo de vida con transiciones validadas y registradas; E/S → Bloqueado conservando memoria; `PoliticaAsignacion` con Best-Fit; fusión de huecos; admisión solo si hay memoria; rechazo si excede RAM total | ✅ (ver nota) |
+| III. Gestión de recursos | `Planificador` (Estrategia) con RR; ciclo de vida con transiciones validadas y registradas; E/S → Bloqueado conservando memoria; `PoliticaAsignacion` con Best-Fit y First-Fit seleccionables; fusión de huecos; admisión solo si hay memoria; rechazo si excede RAM total | ✅ |
 | IV. Interfaces duales | Dashboard con colas, mapa de RAM, Gantt, métricas, controles; `gestor.ps1` contra API local con códigos de salida ≠ 0 en errores | ✅ |
-| V. Entrada JSON | `config.json` con validación completa previa al arranque; parámetros globales en JSON y desde la interfaz | ✅ |
+| V. Entrada JSON | `config.json` con validación completa previa al arranque; quantum, RAM, `politicaMemoria` y `planificador` configurables en el JSON (quantum, RAM y política también desde la interfaz) | ✅ |
 | VI. Calidad y trazabilidad | Pruebas primero para quantum, PCB, E/S, métricas, memoria; escenarios de referencia de la spec; bitácora de eventos; todo en español | ✅ |
 | Restricciones adicionales | Solo JDK en Windows; loopback; fórmulas documentadas; JSON de salida propio | ✅ |
 
-**Nota (Principio III)**: la constitución pide First-Fit y Best-Fit seleccionables; la spec de esta
-funcionalidad pide **estrictamente Best-Fit**. Se implementa la interfaz `PoliticaAsignacion` con
-`MejorAjuste`; `PrimerAjuste` queda como siguiente funcionalidad. Ver Complexity Tracking.
-
 **Re-evaluación post-diseño (Fase 1)**: data-model, contratos y quickstart mantienen las
 dependencias entre capas y no introducen bibliotecas. Sin nuevas violaciones. ✅
+
+**Re-evaluación tras `/speckit-analyze` (2026-10-15)**: se resolvieron C1 (First-Fit seleccionable,
+Principio III) y C2 (política y planificador configurables, Principio V). Ver research.md §9.
+Sin violaciones pendientes. ✅
 
 ## Project Structure
 
@@ -85,13 +86,15 @@ specs/001-simulador-procesos-memoria/
 src/main/java/gestor/
 ├── Principal.java                    # main: argumentos, carga, arranque del servidor
 ├── modelo/                           # EstadoProceso, EventoES, DefinicionProceso,
+│                                     # PoliticaMemoria, AlgoritmoPlanificacion,
 │                                     # ConfiguracionSimulacion, Escenario, Proceso
 ├── json/                             # LectorJson, EscritorJson, ErrorJson
 ├── entrada/                          # LectorEscenario (valida), ErrorConfiguracion
 ├── recursos/
 │   ├── cpu/                          # Planificador, PlanificadorRoundRobin
-│   └── memoria/                      # Bloque, MapaMemoria, PoliticaAsignacion, MejorAjuste
-├── motor/                            # Motor, ControladorSimulacion, ModoSimulacion,
+│   └── memoria/                      # Bloque, MapaMemoria, PoliticaAsignacion, MejorAjuste,
+│                                     # PrimerAjuste
+├── motor/                            # Motor, FabricaRecursos, ControladorSimulacion, ModoSimulacion,
 │                                     # Bitacora, EventoBitacora, TramoGantt, Metricas,
 │                                     # Instantanea (+ records anidados)
 └── interfaz/web/                     # ServidorWeb, ManejadorApi, ManejadorEstaticos,
@@ -103,10 +106,10 @@ src/test/java/gestor/
 ├── json/                             # LectorJsonPrueba, EscritorJsonPrueba
 ├── entrada/                          # LectorEscenarioPrueba
 ├── recursos/cpu/                     # PlanificadorRoundRobinPrueba
-├── recursos/memoria/                 # MapaMemoriaPrueba, MejorAjustePrueba
+├── recursos/memoria/                 # MapaMemoriaPrueba, MejorAjustePrueba, PrimerAjustePrueba
 └── motor/                            # MotorRoundRobinPrueba, MotorEntradaSalidaPrueba,
                                       # MotorAdmisionMemoriaPrueba, MetricasPrueba,
-                                      # TransicionesPcbPrueba, ControladorSimulacionPrueba
+                                      # FabricaRecursosPrueba, ControladorSimulacionPrueba
 src/test/recursos/invalidos/          # archivos JSON inválidos para la batería de SC-002
 
 scripts/                              # compilar.ps1, probar.ps1, iniciar.ps1
@@ -126,6 +129,4 @@ compone. La verificación de dirección de dependencias se hace en revisión de 
 
 ## Complexity Tracking
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| Solo Best-Fit en esta funcionalidad (la constitución menciona First-Fit y Best-Fit seleccionables) | La spec acordada pide estrictamente Best-Fit; se acota el alcance de la primera entrega | Implementar ya First-Fit agrega UI y pruebas no pedidas; la interfaz `PoliticaAsignacion` deja la extensión sin cambios en el Motor |
+Sin violaciones que justificar.

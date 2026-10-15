@@ -23,10 +23,15 @@ mapa de RAM, Gantt, controles), CLI PowerShell `.\gestor.ps1 <idproceso>` y mét
   Incluye ambos (espera = ticks en Listo + ticks en Espera de Memoria = retorno − ráfaga − E/S),
   sin desglose adicional.
 - Q: ¿El dashboard ofrece reinicio de la simulación? → A: Sí, botón Reiniciar que vuelve al
-  instante 0 con el mismo `config.json`, conserva quantum y RAM elegidos en la interfaz y deja la
+  instante 0 con el mismo `config.json`, conserva quantum, RAM (y política de memoria) elegidos en la interfaz y deja la
   simulación detenida.
 - Q: Si en el mismo instante llega un proceso, otro vuelve de E/S y otro agota su quantum, ¿en qué
   orden entran a Listos? → A: Recién llegado, luego retornado de E/S, al final el expropiado.
+- Q (alineación con la constitución, Principios III y V): ¿se puede elegir la política de memoria y
+  el algoritmo de planificación? → A: Sí. `configuracion.politicaMemoria` admite `BEST_FIT` (por
+  defecto) y `FIRST_FIT`; `configuracion.planificador` admite `ROUND_ROBIN` (único valor por ahora,
+  preparado para FCFS, Prioridades y SJF). La política también se puede elegir en el dashboard
+  mientras la simulación esté en el instante 0.
 
 ## Glosario y Modelo de Tiempo
 
@@ -83,9 +88,10 @@ visualización tiene valor. Por sí solo permite comprobar ejercicios de clase.
 
 ---
 
-### User Story 2 - Administrar la memoria RAM con partición variable Best-Fit (Priority: P1)
+### User Story 2 - Administrar la memoria RAM con partición variable Best-Fit / First-Fit (Priority: P1)
 
-El estudiante observa cómo cada proceso recibe un bloque contiguo de RAM elegido con Best-Fit,
+El estudiante observa cómo cada proceso recibe un bloque contiguo de RAM elegido con la política
+configurada (Best-Fit por defecto, o First-Fit para comparar),
 cómo los procesos que no caben esperan, y cómo al terminar un proceso su bloque se libera y se
 fusiona con los huecos adyacentes.
 
@@ -114,6 +120,9 @@ conocido y comparar la lista de bloques y huecos (base, límite, tamaño) con la
 7. **Given** un proceso G de 80 MB en Espera de Memoria que ya fue adelantado 5 veces, **When** llega
    o espera detrás de él un proceso de 10 MB que cabe, **Then** el de 10 MB no se admite hasta que G
    sea admitido.
+8. **Given** la misma memoria del escenario 1 (huecos [0–49] y [70–99]) con política First-Fit,
+   **When** se admite un proceso de 25 MB, **Then** recibe el bloque [0–24] (primer hueco en que
+   cabe) y quedan los huecos [25–49] y [70–99].
 6. **Given** un proceso Bloqueado por E/S, **When** transcurre su bloqueo, **Then** mantiene durante
    todo ese tiempo el mismo bloque de memoria.
 
@@ -151,8 +160,8 @@ motor en cada tick.
    procesos en Terminados, el Gantt completo (con tramos ociosos marcados) y el resumen de métricas.
 8. **Given** una simulación en cualquier modo (en curso, pausada o finalizada), **When** se pulsa
    Reiniciar, **Then** se vuelve a leer el mismo `config.json`, la simulación vuelve al instante 0
-   detenida, se vacían Gantt, bitácora y métricas, se conservan el quantum y la capacidad de RAM
-   elegidos en la interfaz y la capacidad de RAM vuelve a ser editable.
+   detenida, se vacían Gantt, bitácora y métricas, se conservan el quantum, la capacidad de RAM y
+   la política de memoria elegidos en la interfaz, y la RAM y la política vuelven a ser editables.
 9. **Given** que tras reiniciar algún proceso requiere más memoria que la nueva capacidad elegida,
    **When** se intenta cambiar la capacidad, **Then** el cambio se rechaza indicando el proceso que
    no cabría.
@@ -249,8 +258,10 @@ válidos se cargan íntegramente y los inválidos se rechazan indicando campo y 
   por el proceso tras los cuales solicita la E/S; entero entre 1 y `tiempoRafaga`−1, estrictamente
   creciente dentro de la lista) y `duracion` (entero ≥ 1, ticks de bloqueo).
 - **FR-004**: El archivo PUEDE incluir una configuración global con `memoriaTotal` (MB), `quantum`
-  (ticks) y `maxAdelantamientos` (entero ≥ 1); si se omiten, se usan los valores por defecto
-  1024 MB, 1 tick y 5 adelantamientos.
+  (ticks), `maxAdelantamientos` (entero ≥ 1), `politicaMemoria` (`BEST_FIT` | `FIRST_FIT`) y
+  `planificador` (`ROUND_ROBIN`); si se omiten, se usan los valores por defecto 1024 MB, 1 tick,
+  5 adelantamientos, `BEST_FIT` y `ROUND_ROBIN`. Un valor no admitido de `politicaMemoria` o
+  `planificador` es un error que indica los valores válidos.
 - **FR-005**: El sistema DEBE rechazar antes de iniciar cualquier archivo con JSON mal formado,
   campos obligatorios ausentes, tipos o rangos inválidos, `id` duplicados, lista de procesos vacía o
   procesos cuya memoria exceda la capacidad total, indicando en español el proceso, el campo y el
@@ -281,9 +292,13 @@ válidos se cargan íntegramente y los inválidos se rechazan indicando campo y 
 - **FR-013**: La RAM DEBE modelarse como un espacio contiguo de `memoriaTotal` MB con direcciones de
   0 a `memoriaTotal`−1, dividido en bloques asignados (base, límite = base + tamaño − 1, proceso) y
   huecos libres.
-- **FR-014**: La asignación DEBE usar Best-Fit: el hueco libre más pequeño cuyo tamaño sea ≥ a la
-  memoria requerida; en empate, el de menor base. El proceso ocupa el inicio del hueco y el
-  sobrante queda como hueco.
+- **FR-014**: La asignación DEBE usar la política configurada. **Best-Fit** (por defecto): el hueco
+  libre más pequeño cuyo tamaño sea ≥ a la memoria requerida; en empate, el de menor base.
+  **First-Fit**: el primer hueco, en orden de dirección base, cuyo tamaño sea ≥ a la memoria
+  requerida. En ambos casos el proceso ocupa el inicio del hueco y el sobrante queda como hueco.
+- **FR-014a**: La política de memoria solo puede cambiarse con la simulación en el instante 0 sin
+  iniciar (desde `config.json` o desde el dashboard); el dashboard y la API DEBEN mostrar en todo
+  momento la política y el planificador vigentes.
 - **FR-015**: Un proceso solo puede pasar de Nuevo a Listo si se le asigna memoria; si no, permanece
   en la cola de Espera de Memoria, ordenada por instante de llegada.
 - **FR-015a**: Cada proceso en Espera de Memoria DEBE llevar un contador de adelantamientos, que se
@@ -310,8 +325,9 @@ válidos se cargan íntegramente y los inválidos se rechazan indicando campo y 
 - **FR-021**: El dashboard DEBE mostrar un diagrama de Gantt acumulativo que crezca tick a tick, con
   un tramo por turno de CPU y tramos ociosos diferenciados.
 - **FR-022**: El dashboard DEBE ofrecer: botón Iniciar/Reanudar, botón Pausar, botón Reiniciar, control deslizante de
-  velocidad en milisegundos por tick (rango 50–2000 ms, por defecto 500 ms) y campos para modificar
-  quantum y capacidad de RAM, con las reglas de aplicación de la Historia 3.
+  velocidad en milisegundos por tick (rango 50–2000 ms, por defecto 500 ms), campos para modificar
+  quantum y capacidad de RAM y un selector de política de memoria (Best-Fit / First-Fit), con las
+  reglas de aplicación de la Historia 3 y FR-014a.
 - **FR-023**: La vista DEBE reflejar cada nuevo tick en menos de 1 segundo.
 - **FR-024**: El dashboard DEBE mostrar las métricas: por proceso (llegada, finalización, retorno,
   espera) y globales (espera promedio, retorno promedio, utilización de CPU), actualizadas con los
@@ -345,11 +361,14 @@ válidos se cargan íntegramente y los inválidos se rechazan indicando campo y 
 ### Key Entities
 
 - **Configuración del escenario**: archivo de entrada con parámetros globales (`memoriaTotal`,
-  `quantum`, `maxAdelantamientos`) y la lista de procesos.
+  `quantum`, `maxAdelantamientos`, `politicaMemoria`, `planificador`) y la lista de procesos.
 
   ```json
   {
-    "configuracion": { "memoriaTotal": 1024, "quantum": 1, "maxAdelantamientos": 5 },
+    "configuracion": {
+      "memoriaTotal": 1024, "quantum": 1, "maxAdelantamientos": 5,
+      "politicaMemoria": "BEST_FIT", "planificador": "ROUND_ROBIN"
+    },
     "procesos": [
       {
         "id": "P1",
@@ -400,16 +419,17 @@ válidos se cargan íntegramente y los inválidos se rechazan indicando campo y 
 - Todas las unidades temporales del JSON se interpretan como ticks; "quantum" en la configuración
   global designa la duración del turno en ticks, y `enQuantum` cuenta ticks de CPU consumidos por
   el proceso.
-- Valores por defecto: RAM 1024 MB, quantum 1 tick, límite de adelantamientos 5, velocidad 500 ms
-  por tick.
-- La capacidad de RAM solo puede cambiarse con la simulación en el instante 0 sin iniciar (al
-  arrancar o tras Reiniciar); el botón Reiniciar no permite elegir otro archivo de escenario.
+- Valores por defecto: RAM 1024 MB, quantum 1 tick, límite de adelantamientos 5, política
+  Best-Fit, planificador Round Robin, velocidad 500 ms por tick.
+- La capacidad de RAM y la política de memoria solo pueden cambiarse con la simulación en el
+  instante 0 sin iniciar (al arrancar o tras Reiniciar); el botón Reiniciar no permite elegir otro archivo de escenario.
 - Reiniciar vuelve a leer `config.json` desde disco (refleja sus cambios); si el archivo ya no es
   válido, se informa el error y se reinicia con el último escenario válido cargado.
 - El cambio de contexto y la asignación de memoria no consumen tiempo.
 - Solo existe una CPU y la E/S no tiene contención entre procesos.
-- La política de memoria es Best-Fit; First-Fit y otros planificadores (FCFS, Prioridades, SJF)
-  quedan fuera de esta funcionalidad, aunque la solución debe permitir añadirlos después.
+- Las políticas de memoria disponibles son Best-Fit (por defecto) y First-Fit. El único
+  planificador es Round Robin; FCFS, Prioridades y SJF quedan fuera de esta funcionalidad, pero
+  `planificador` ya es configurable y la solución debe permitir añadirlos sin modificar el motor.
 - No hay compactación de memoria ni intercambio (swapping).
 - La CLI se comunica con el simulador que corre en la misma máquina; no se requiere autenticación
   porque el servicio solo es accesible localmente.

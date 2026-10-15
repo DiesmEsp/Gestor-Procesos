@@ -89,7 +89,20 @@ JDK `21.0.10` LTS instalado; **no** hay Maven ni Gradle disponibles.
 - **Alternativas**: `Invoke-RestMethod` (en PS 5.1 decodifica mal UTF-8 si falta el charset y
   lanza excepción en 404 sin dar acceso cómodo al cuerpo).
 
-## 9. Unidades y representación
+## 9. Selección de política de memoria y planificador
+
+- **Decisión**: enums `PoliticaMemoria` y `AlgoritmoPlanificacion` en `gestor.modelo` (los valores
+  del JSON son los nombres de las constantes) y `FabricaRecursos` en `gestor.motor`, que los
+  traduce a `MejorAjuste`/`PrimerAjuste` y a `PlanificadorRoundRobin`. La política se puede
+  cambiar desde el dashboard solo en el instante 0; el planificador solo desde `config.json`.
+- **Justificación**: cumple los Principios III (First-Fit y Best-Fit seleccionables) y V
+  (política y algoritmo configurables) sin que `modelo` dependa de `recursos`. Añadir FCFS,
+  Prioridades o SJF solo requiere una constante, una clase `Planificador` y una línea en la
+  fábrica.
+- **Alternativas**: cadenas sueltas en la configuración (sin validación de tipos); reflexión por
+  nombre de clase (opaca y contraria al enfoque didáctico).
+
+## 10. Unidades y representación
 
 - **Decisión**: tiempos en `int` (ticks), memoria en `int` (MB). Direcciones `[base, límite]`
   inclusivas. Métricas en `double`, redondeadas solo al presentar (2 decimales promedios, 1 decimal

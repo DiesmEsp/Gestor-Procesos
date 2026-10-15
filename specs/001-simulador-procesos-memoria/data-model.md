@@ -42,6 +42,16 @@ eventos en la bitácora, 0 ticks de espera de memoria).
 | `bloqueosES` | List<EventoES> | por defecto vacía |
 | `ordenArchivo` | int | posición en el archivo; desempata llegadas simultáneas |
 
+### `PoliticaMemoria` (enum)
+
+`BEST_FIT` ("Best-Fit"), `FIRST_FIT` ("First-Fit"). `static Optional<PoliticaMemoria>
+desdeCodigo(String)` usa el nombre exacto de la constante (el valor del JSON).
+
+### `AlgoritmoPlanificacion` (enum)
+
+`ROUND_ROBIN` ("Round Robin"). Se añadirán `FCFS`, `PRIORIDADES` y `SJF` en funcionalidades
+futuras. Mismo `desdeCodigo(String)`.
+
 ### `ConfiguracionSimulacion` (record)
 
 | Campo | Tipo | Defecto | Regla |
@@ -49,6 +59,8 @@ eventos en la bitácora, 0 ticks de espera de memoria).
 | `memoriaTotal` | int | 1024 | ≥ 1 |
 | `quantum` | int | 1 | ≥ 1 |
 | `maxAdelantamientos` | int | 5 | ≥ 1 |
+| `politicaMemoria` | PoliticaMemoria | BEST_FIT | `BEST_FIT` o `FIRST_FIT` |
+| `planificador` | AlgoritmoPlanificacion | ROUND_ROBIN | `ROUND_ROBIN` |
 
 ### `Escenario` (record)
 
@@ -97,10 +109,11 @@ Operaciones:
 - `int memoriaLibre()`, `int mayorHueco()`, `int fragmentacionExterna()` (= libre − mayor hueco).
 - `List<Bloque> bloques()` — copia inmutable para instantáneas.
 
-### `PoliticaAsignacion` (interfaz) → `MejorAjuste` (Best-Fit)
+### `PoliticaAsignacion` (interfaz) → `MejorAjuste` (Best-Fit), `PrimerAjuste` (First-Fit)
 
-`Optional<Bloque> elegirHueco(List<Bloque> huecos, int tamano)`: menor tamaño ≥ requerido; empate →
-menor base (FR-014). Interfaz preparada para `PrimerAjuste` (First-Fit) futuro.
+`Optional<Bloque> elegirHueco(List<Bloque> huecos, int tamano)`, con `huecos` ordenados por base:
+- `MejorAjuste`: menor tamaño ≥ requerido; empate → menor base (FR-014).
+- `PrimerAjuste`: el primero (menor base) con tamaño ≥ requerido (FR-014).
 
 ## Capa `gestor.recursos.cpu`
 
@@ -114,6 +127,15 @@ menor base (FR-014). Interfaz preparada para `PrimerAjuste` (First-Fit) futuro.
 Preparado para `PlanificadorFCFS`, `PlanificadorPrioridades`, `PlanificadorSJF` (fuera de alcance).
 
 ## Capa `gestor.motor`
+
+### `FabricaRecursos`
+
+Traduce la configuración a implementaciones de la capa de recursos, para que ni `modelo` ni
+`Motor` conozcan las clases concretas:
+- `static PoliticaAsignacion crearPolitica(PoliticaMemoria)`: `BEST_FIT → MejorAjuste`,
+  `FIRST_FIT → PrimerAjuste`.
+- `static Planificador crearPlanificador(AlgoritmoPlanificacion)`: `ROUND_ROBIN →
+  PlanificadorRoundRobin`.
 
 ### `Motor`
 
@@ -161,9 +183,10 @@ reloj, `velocidadMs` (50–2000, defecto 500) y un `Supplier<Escenario>` para re
 |---|---|---|
 | `iniciar()` | DETENIDA o PAUSADA | → EN_CURSO |
 | `pausar()` | EN_CURSO | → PAUSADA |
-| `reiniciar()` | cualquiera | relee escenario (si falla, usa el último válido y devuelve aviso); conserva quantum y RAM de la interfaz; → DETENIDA |
+| `reiniciar()` | cualquiera | relee escenario (si falla, usa el último válido y devuelve aviso); conserva quantum, RAM y política elegidos en la interfaz; → DETENIDA |
 | `cambiarQuantum(q)` | q ≥ 1 | aplica en el siguiente despacho |
 | `cambiarMemoriaTotal(m)` | DETENIDA y m ≥ memoria de todo proceso | recrea el mapa |
+| `cambiarPoliticaMemoria(p)` | DETENIDA | recrea el motor con la nueva política (FR-014a) |
 | `cambiarVelocidad(ms)` | 50 ≤ ms ≤ 2000 | cambia el intervalo |
 
 ### `Instantanea` (records inmutables)
