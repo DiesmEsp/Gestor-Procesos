@@ -42,9 +42,10 @@ cd Gestor-Procesos
 git switch 001-simulador-procesos-memoria
 ```
 
-Hay que trabajar en la rama `001-simulador-procesos-memoria`. Los scripts de Spec Kit deducen de
-ese nombre cuál es la carpeta de la funcionalidad (el archivo `.specify/feature.json` es local y no
-se versiona).
+Hay que trabajar en la rama `001-simulador-procesos-memoria`. El archivo `.specify/feature.json`
+está versionado a propósito (Spec Kit lo ignora por defecto): apunta a
+`specs/001-simulador-procesos-memoria`, y sin él los comandos `/speckit-*` no encuentran la
+funcionalidad.
 
 - **Con Claude Code**: ejecutar `/speckit-implement`, que recorre `tasks.md` fase por fase y marca
   las tareas completadas.
