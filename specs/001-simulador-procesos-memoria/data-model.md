@@ -183,7 +183,7 @@ reloj, `velocidadMs` (50–2000, defecto 500) y un `Supplier<Escenario>` para re
 |---|---|---|
 | `iniciar()` | DETENIDA o PAUSADA | → EN_CURSO |
 | `pausar()` | EN_CURSO | → PAUSADA |
-| `reiniciar()` | cualquiera | relee escenario (si falla, usa el último válido y devuelve aviso); conserva quantum, RAM y política elegidos en la interfaz; → DETENIDA |
+| `reiniciar()` | cualquiera | relee escenario (si falla, usa el último válido y devuelve aviso); superpone al escenario releído solo los valores de quantum, RAM y política modificados desde la interfaz (si la RAM conservada no aloja algún proceso, usa la del archivo y deja aviso); → DETENIDA |
 | `cambiarQuantum(q)` | q ≥ 1 | aplica en el siguiente despacho |
 | `cambiarMemoriaTotal(m)` | DETENIDA y m ≥ memoria de todo proceso | recrea el mapa |
 | `cambiarPoliticaMemoria(p)` | DETENIDA | recrea el motor con la nueva política (FR-014a) |
@@ -191,7 +191,9 @@ reloj, `velocidadMs` (50–2000, defecto 500) y un `Supplier<Escenario>` para re
 
 ### `Instantanea` (records inmutables)
 
-Ver la forma JSON exacta en `contracts/api-http.md` (`GET /api/estado`). Incluye: instante, modo,
+Ver la forma JSON exacta en `contracts/api-http.md` (`GET /api/estado`). `Motor.instantanea()`
+produce la parte del motor con `modo`, `velocidadMs` y `aviso` neutros; `ControladorSimulacion`
+la completa con `Instantanea.con(modo, velocidadMs, aviso)`. Incluye: instante, modo,
 configuración vigente, colas, proceso en CPU, procesos (resumen), mapa de memoria con métricas de
 fragmentación, Gantt, bitácora y métricas.
 

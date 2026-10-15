@@ -23,7 +23,7 @@ mapa de RAM, Gantt, controles), CLI PowerShell `.\gestor.ps1 <idproceso>` y mét
   Incluye ambos (espera = ticks en Listo + ticks en Espera de Memoria = retorno − ráfaga − E/S),
   sin desglose adicional.
 - Q: ¿El dashboard ofrece reinicio de la simulación? → A: Sí, botón Reiniciar que vuelve al
-  instante 0 con el mismo `config.json`, conserva quantum, RAM (y política de memoria) elegidos en la interfaz y deja la
+  instante 0 con el mismo `config.json` releído, conserva solo los valores de quantum, RAM y política de memoria modificados desde la interfaz (el resto viene del archivo) y deja la
   simulación detenida.
 - Q: Si en el mismo instante llega un proceso, otro vuelve de E/S y otro agota su quantum, ¿en qué
   orden entran a Listos? → A: Recién llegado, luego retornado de E/S, al final el expropiado.
@@ -32,6 +32,12 @@ mapa de RAM, Gantt, controles), CLI PowerShell `.\gestor.ps1 <idproceso>` y mét
   defecto) y `FIRST_FIT`; `configuracion.planificador` admite `ROUND_ROBIN` (único valor por ahora,
   preparado para FCFS, Prioridades y SJF). La política también se puede elegir en el dashboard
   mientras la simulación esté en el instante 0.
+- Q (hallazgo A1 de `/speckit-analyze`): al Reiniciar, ¿mandan los valores del `config.json`
+  releído o los fijados en la interfaz? → A: Solo se conservan los valores de quantum, RAM y
+  política modificados explícitamente desde la interfaz; el resto viene del archivo. Si la RAM
+  conservada no aloja algún proceso, se usa la del archivo con un aviso.
+- Q (hallazgo I3 de `/speckit-analyze`): ¿cómo se etiquetan en la CLI los quantums consumidos y
+  restantes? → A: "Quantums (ticks) consumidos/restantes", con valores en ticks de CPU.
 
 ## Glosario y Modelo de Tiempo
 
@@ -42,9 +48,10 @@ mapa de RAM, Gantt, controles), CLI PowerShell `.\gestor.ps1 <idproceso>` y mét
 - **Instante t**: el comienzo del tick número `t` (la simulación empieza en el instante 0).
 - **Orden de eventos dentro de cada instante t** (regla determinista y obligatoria):
   1. Se intenta admitir en memoria, en orden de llegada, a los procesos que ya estaban en
-     Espera de Memoria.
+     Espera de Memoria, aplicando la regla del proceso bloqueante (FR-015a).
   2. Llegan los procesos con `tiempoLlegada = t` (en el orden en que aparecen en el archivo) y se
-     intenta admitirlos; si caben pasan a Listo, si no, a Espera de Memoria.
+     intenta admitirlos; si caben pasan a Listo, salvo que exista un proceso bloqueante
+     (FR-015a); si no caben o hay un bloqueante, pasan al final de la Espera de Memoria.
   3. Los procesos cuya E/S termina en el instante t pasan de Bloqueado a Listo.
   4. El proceso expropiado al final del tick anterior (quantum agotado) se coloca al final de Listos.
   5. Si la CPU está libre, se despacha el primer proceso de la cola de Listos.
@@ -143,10 +150,13 @@ motor en cada tick.
 **Acceptance Scenarios**:
 
 1. **Given** el simulador recién arrancado con un escenario cargado, **When** se abre el dashboard,
-   **Then** se ve el instante 0, las colas vacías o con los procesos que llegan en 0, el mapa de
-   RAM completamente libre y la simulación detenida.
+   **Then** se ve el instante 0, todas las colas vacías (los procesos que llegan en 0 aún figuran
+   como "Pendiente de llegada", porque las llegadas se procesan al ejecutar el primer tick), el
+   mapa de RAM completamente libre y la simulación detenida.
 2. **Given** la simulación detenida, **When** se pulsa Iniciar/Reanudar, **Then** el reloj avanza
-   un tick cada intervalo indicado por el control de velocidad y la vista se actualiza en cada tick.
+   un tick cada intervalo indicado por el control de velocidad y la vista muestra el estado más
+   reciente con un retraso menor de 1 segundo; a velocidades altas la vista puede omitir estados
+   intermedios, pero la bitácora los conserva todos.
 3. **Given** la simulación en curso, **When** se pulsa Pausar, **Then** el reloj se detiene en el
    tick actual y, al reanudar, continúa desde ese mismo estado sin pérdida ni repetición de ticks.
 4. **Given** la simulación en curso, **When** se mueve el control de velocidad, **Then** el nuevo
@@ -161,7 +171,8 @@ motor en cada tick.
 8. **Given** una simulación en cualquier modo (en curso, pausada o finalizada), **When** se pulsa
    Reiniciar, **Then** se vuelve a leer el mismo `config.json`, la simulación vuelve al instante 0
    detenida, se vacían Gantt, bitácora y métricas, se conservan el quantum, la capacidad de RAM y
-   la política de memoria elegidos en la interfaz, y la RAM y la política vuelven a ser editables.
+   la política de memoria que se hayan modificado desde la interfaz (los no modificados se toman
+   del archivo releído), y la RAM y la política vuelven a ser editables.
 9. **Given** que tras reiniciar algún proceso requiere más memoria que la nueva capacidad elegida,
    **When** se intenta cambiar la capacidad, **Then** el cambio se rechaza indicando el proceso que
    no cabría.
@@ -328,7 +339,9 @@ válidos se cargan íntegramente y los inválidos se rechazan indicando campo y 
   velocidad en milisegundos por tick (rango 50–2000 ms, por defecto 500 ms), campos para modificar
   quantum y capacidad de RAM y un selector de política de memoria (Best-Fit / First-Fit), con las
   reglas de aplicación de la Historia 3 y FR-014a.
-- **FR-023**: La vista DEBE reflejar cada nuevo tick en menos de 1 segundo.
+- **FR-023**: La vista DEBE mostrar el estado más reciente de la simulación con un retraso menor de
+  1 segundo; la bitácora mostrada DEBE incluir todos los eventos, aunque la vista omita estados
+  intermedios a velocidades altas.
 - **FR-024**: El dashboard DEBE mostrar las métricas: por proceso (llegada, finalización, retorno,
   espera) y globales (espera promedio, retorno promedio, utilización de CPU), actualizadas con los
   procesos terminados hasta el momento.
@@ -423,6 +436,10 @@ válidos se cargan íntegramente y los inválidos se rechazan indicando campo y 
   Best-Fit, planificador Round Robin, velocidad 500 ms por tick.
 - La capacidad de RAM y la política de memoria solo pueden cambiarse con la simulación en el
   instante 0 sin iniciar (al arrancar o tras Reiniciar); el botón Reiniciar no permite elegir otro archivo de escenario.
+- Al Reiniciar, solo se conservan los valores de quantum, RAM y política que el usuario modificó
+  explícitamente desde la interfaz; los demás se toman del `config.json` releído. Si la RAM
+  conservada no aloja algún proceso del archivo releído, se usa la RAM del archivo y se muestra un
+  aviso.
 - Reiniciar vuelve a leer `config.json` desde disco (refleja sus cambios); si el archivo ya no es
   válido, se informa el error y se reinicia con el último escenario válido cargado.
 - El cambio de contexto y la asignación de memoria no consumen tiempo.

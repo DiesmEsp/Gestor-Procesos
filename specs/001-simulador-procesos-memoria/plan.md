@@ -49,7 +49,7 @@ y varios observadores.
 | Principio | Verificación | Estado |
 |---|---|---|
 | I. Stack estándar, cero dependencias | Java 21 + JDK únicamente; `HttpServer` nativo; frontend Vanilla sin CDN; JSON propio; pruebas sin JUnit (ni siquiera se usa la excepción permitida) | ✅ |
-| II. Arquitectura en capas | `motor` → `recursos` → `modelo`; `entrada` → `modelo`, `json`; `interfaz.web` → `motor`, `json`. Motor y recursos sin E/S. Tick determinista sin hilos; hilo de reloj y lecturas sincronizados en `ControladorSimulacion` | ✅ |
+| II. Arquitectura en capas | `motor` → `recursos` → `modelo`; `entrada` → `modelo`, `json`; `interfaz.web` → `motor`, `modelo`, `json`. Motor y recursos sin E/S. Tick determinista sin hilos; hilo de reloj y lecturas sincronizados en `ControladorSimulacion` | ✅ |
 | III. Gestión de recursos | `Planificador` (Estrategia) con RR; ciclo de vida con transiciones validadas y registradas; E/S → Bloqueado conservando memoria; `PoliticaAsignacion` con Best-Fit y First-Fit seleccionables; fusión de huecos; admisión solo si hay memoria; rechazo si excede RAM total | ✅ |
 | IV. Interfaces duales | Dashboard con colas, mapa de RAM, Gantt, métricas, controles; `gestor.ps1` contra API local con códigos de salida ≠ 0 en errores | ✅ |
 | V. Entrada JSON | `config.json` con validación completa previa al arranque; quantum, RAM, `politicaMemoria` y `planificador` configurables en el JSON (quantum, RAM y política también desde la interfaz) | ✅ |
@@ -103,18 +103,23 @@ src/main/resources/web/               # index.html, estilos.css, app.js
 
 src/test/java/gestor/
 ├── pruebas/                          # Prueba (anotación), Afirmar, EjecutorPruebas
+├── modelo/                           # TransicionesPcbPrueba
 ├── json/                             # LectorJsonPrueba, EscritorJsonPrueba
 ├── entrada/                          # LectorEscenarioPrueba
 ├── recursos/cpu/                     # PlanificadorRoundRobinPrueba
 ├── recursos/memoria/                 # MapaMemoriaPrueba, MejorAjustePrueba, PrimerAjustePrueba
-└── motor/                            # MotorRoundRobinPrueba, MotorEntradaSalidaPrueba,
-                                      # MotorAdmisionMemoriaPrueba, MetricasPrueba,
-                                      # FabricaRecursosPrueba, ControladorSimulacionPrueba
+├── motor/                            # MotorRoundRobinPrueba, MotorEntradaSalidaPrueba,
+│                                     # MotorAdmisionMemoriaPrueba, MetricasPrueba,
+│                                     # FabricaRecursosPrueba, MotorInstantaneaPrueba,
+│                                     # ControladorSimulacionPrueba, RendimientoPrueba
+└── interfaz/web/                     # ApiHttpPrueba
 src/test/recursos/invalidos/          # archivos JSON inválidos para la batería de SC-002
+src/test/recursos/validos/            # completo.json, minimo.json
 
-scripts/                              # compilar.ps1, probar.ps1, iniciar.ps1
+scripts/                              # compilar.ps1, probar.ps1, iniciar.ps1, probar-cli.ps1,
+                                      # verificar-capas.ps1
 ejemplos/                             # referencia-rr.json, referencia-es.json, best-fit.json,
-                                      # inanicion.json, config.json
+                                      # first-fit.json, inanicion.json, carga-50.json, config.json
 gestor.ps1                            # CLI (UTF-8 con BOM)
 config.json                           # escenario por defecto (copia de ejemplos/config.json)
 build/                                # salida de compilación (ignorada)
@@ -122,9 +127,10 @@ build/                                # salida de compilación (ignorada)
 
 **Structure Decision**: proyecto único Java con capas como paquetes (`modelo`, `json`, `entrada`,
 `recursos`, `motor`, `interfaz.web`); los estáticos web viajan dentro del jar como recursos.
-Dependencias permitidas entre paquetes: `interfaz.web → motor, json, entrada`;
-`motor → recursos, modelo`; `recursos → modelo`; `entrada → modelo, json`; `Principal` las
-compone. La verificación de dirección de dependencias se hace en revisión de código
+Dependencias permitidas entre paquetes: `interfaz.web → motor, modelo, json`;
+`motor → recursos, modelo`; `recursos → modelo`; `entrada → modelo, json`. `Principal` las
+compone y es el único que usa `entrada` para cargar y releer el escenario. La dirección de las
+dependencias se comprueba con `scripts/verificar-capas.ps1` y en revisión de código
 (constitución, Flujo de Desarrollo).
 
 ## Complexity Tracking

@@ -36,12 +36,12 @@ Otros escenarios en `ejemplos/`: `referencia-es.json` (E/S, CPU 60,0 %), `best-f
 | Acción | Resultado esperado |
 |---|---|
 | Pausar y luego Iniciar/Reanudar | el instante continúa sin saltos ni repeticiones |
-| Mover el control de velocidad a 50 ms | la vista sigue cada tick; el resultado final no cambia |
+| Mover el control de velocidad a 50 ms | la vista muestra el estado más reciente con < 1 s de retraso, la bitácora no pierde eventos y el resultado final no cambia |
 | Cambiar quantum a 3 en curso | los siguientes despachos usan 3 ticks |
 | Cambiar RAM en curso | rechazado: "La capacidad de RAM solo puede modificarse antes de iniciar" |
 | Cambiar la política a First-Fit en el instante 0 con `best-fit.json` e iniciar | el proceso de 25 MB recibe [0–24] |
 | Cambiar la política en curso | rechazado, igual que la RAM |
-| Reiniciar | instante 0, detenida, Gantt y bitácora vacíos, quantum/RAM/política elegidos conservados |
+| Reiniciar | instante 0, detenida, Gantt y bitácora vacíos; se conservan solo el quantum, la RAM y la política modificados en la interfaz (el resto, del `config.json` releído) |
 
 ## 4. CLI
 

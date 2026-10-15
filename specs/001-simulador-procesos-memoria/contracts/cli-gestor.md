@@ -12,13 +12,15 @@ Compatible con Windows PowerShell 5.1 y PowerShell 7. Archivo guardado en UTF-8 
 ```text
 Proceso P2  (instante actual: 5)
   Estado ..................: En Ejecución
-  Quantums consumidos .....: 2
-  Quantums restantes ......: 1
+  Quantums (ticks) consumidos : 2
+  Quantums (ticks) restantes  : 1
   Bloque de RAM ...........: [30 – 49] (20 MB)
   Tiempo de espera ........: 3 ticks
   Adelantamientos .........: 0
 ```
 
+- Los valores de "Quantums (ticks)" están en ticks de CPU: con un quantum mayor que 1, un turno
+  consume varios ticks.
 - `Bloque de RAM` muestra `sin asignar (esperando memoria)` en estado Nuevo.
 - En estado Nuevo con adelantamientos ≥ límite se añade la línea `  Prioridad de admisión : sí (bloqueante)`.
 - En Bloqueado se añade `  E/S restante ............: <n> ticks`.

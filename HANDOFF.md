@@ -54,25 +54,26 @@ funcionalidad.
 - **MVP sugerido**: fases 1–3 (T001–T035), es decir, el motor Round Robin con E/S verificado con
   los escenarios de referencia de la spec.
 
-## Pendientes detectados por `/speckit-analyze` (resolver antes o durante la implementación)
+## Hallazgos de `/speckit-analyze` (todos resueltos en la documentación)
 
-Los dos hallazgos críticos ya están **resueltos** en la documentación:
+| ID | Severidad | Resolución |
+|---|---|---|
+| C1 | Crítico | First-Fit y Best-Fit seleccionables (FR-014, FR-014a; tareas T011, T024, T028) |
+| C2 | Crítico | `configuracion.politicaMemoria` y `configuracion.planificador` en contrato, validación, API y dashboard (research.md §9) |
+| I1 | Medio | El Glosario (pasos 1–2) aplica la regla del proceso bloqueante (FR-015a) |
+| I2 | Medio | US3 escenario 2 y FR-023: la vista muestra el estado más reciente con < 1 s de retraso; la bitácora no omite eventos |
+| I3 | Medio | La CLI muestra "Quantums (ticks) consumidos/restantes" |
+| A1 | Medio | Reiniciar conserva solo los valores modificados desde la interfaz; el resto viene del archivo releído |
+| A2 | Medio | T059 con casos deterministas y en orden fijo |
+| U1 | Medio | T064 mide el tamaño de la instantánea; T065 incluye una verificación manual cronometrada de SC-004 |
+| A3 | Bajo | US3 escenario 1: en el instante 0 sin iniciar, las colas están vacías |
+| U2 | Bajo | `gestor.ps1` con timeout de 2 s; T059 mide < 2 s por consulta (SC-005) |
+| U3 | Bajo | `Instantanea.con(modo, velocidadMs, aviso)` compone los datos del motor y del controlador (T050, T051) |
+| F1 | Bajo | Árbol de pruebas, scripts y ejemplos de `plan.md` sincronizado con `tasks.md` |
+| F2 | Bajo | Dependencias entre capas corregidas en `plan.md` (`interfaz.web → motor, modelo, json`) |
 
-- **C1**: First-Fit y Best-Fit seleccionables (FR-014, FR-014a; tareas T011, T024, T028).
-- **C2**: `configuracion.politicaMemoria` (`BEST_FIT` por defecto / `FIRST_FIT`) y
-  `configuracion.planificador` (`ROUND_ROBIN`) en el contrato, la validación, la API y el dashboard
-  (research.md §9).
-
-Quedan estos hallazgos de severidad media (los IDs de tareas ya están renumerados):
-
-| ID | Severidad | Descripción | Acción sugerida |
-|---|---|---|---|
-| I1 | Medio | El Glosario (pasos 1–2) no menciona la regla de proceso bloqueante (FR-015a) | Añadir «salvo que exista un proceso bloqueante» |
-| I2 | Medio | US3 escenario 2 dice «la vista se actualiza en cada tick»; con sondeo de 200 ms y ticks de 50 ms la vista se salta estados (la bitácora no) | Reformular: «refleja el estado más reciente en < 1 s» |
-| I3 | Medio | La CLI dice «Quantums consumidos/restantes» pero los valores son ticks | Etiquetar como ticks |
-| A1 | Medio | Al Reiniciar no está claro si gana el `config.json` releído o el quantum/RAM fijados en la interfaz | Conservar solo los valores modificados explícitamente desde la interfaz |
-| A2 | Medio | T059 tiene casos de prueba no deterministas | P2 «pendiente» con código 0; definir cómo se llega al estado pausado |
-| U1 | Medio | SC-004 (dashboard < 1 s con 50 procesos) solo se mide en el motor | Añadir una medición o verificación manual en T065 |
+Antes de implementar conviene volver a ejecutar `/speckit-analyze` para confirmar que no quedan
+inconsistencias.
 
 ## Decisiones ya tomadas (no reabrir sin enmendar los documentos)
 
