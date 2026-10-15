@@ -5,9 +5,10 @@ variable con Best-Fit) para Sistemas Operativos, con dashboard web y CLI PowerSh
 
 ## Estado actual
 
-- **Fase completada**: diseño con Spec Kit (constitución → especificación → clarificación → plan →
-  tareas → análisis). **Todavía no hay código.**
-- **Siguiente paso**: tarea **T001** de
+- **Fases completadas**: diseño con Spec Kit y Lote 1, Setup e Infraestructura (**T001–T007**).
+  Estructura, scripts PowerShell y micro-framework de pruebas disponibles, sin dependencias externas.
+  `.\scripts\probar.ps1` reporta **0 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
+- **Siguiente paso**: tarea **T008** de
   [`specs/001-simulador-procesos-memoria/tasks.md`](specs/001-simulador-procesos-memoria/tasks.md).
 
 ## Documentos clave (leer en este orden)
