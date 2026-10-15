@@ -5,14 +5,27 @@ variable con Best-Fit) para Sistemas Operativos, con dashboard web y CLI PowerSh
 
 ## Estado actual
 
-- **Fases completadas**: diseño, infraestructura, fundaciones, US1/US2, carga JSON de US5 y
-  backend HTTP de US3 (**T001–T055**). Hay escritor JSON propio, instantáneas inmutables,
-  controlador con reloj y API local. `config.json` raíz contiene el escenario didáctico de
+- **Fases completadas**: diseño, infraestructura, fundaciones, US1/US2, carga JSON de US5,
+  dashboard web de US3 y CLI de US4 (**T001–T060**). Hay escritor JSON propio, instantáneas
+  inmutables, controlador con reloj y API local. `config.json` raíz contiene el escenario didáctico de
   seis procesos. `.\scripts\probar.ps1` reporta **152 pruebas, 0 fallidas** con JDK 21 en
   PowerShell 5.1 y 7. `.\scripts\iniciar.ps1` valida, informa el resumen y arranca el servidor.
-  `/` sirve una página mínima; el dashboard todavía está pendiente.
-- **Siguiente paso**: tarea **T056**, dashboard HTML, seguida por CSS y JavaScript (T057–T058), de
+  `/` sirve el dashboard completo. `scripts/probar-cli.ps1` reporta **7 pruebas CLI, 0 fallidas**
+  en ambas versiones de PowerShell y comprueba SC-005 con invocaciones en procesos separados.
+- **Siguiente paso**: tarea **T061**, verificador de capas, seguida del pulido T062–T065, de
   [`specs/001-simulador-procesos-memoria/tasks.md`](specs/001-simulador-procesos-memoria/tasks.md).
+
+El dashboard no usa bibliotecas: serializa las peticiones GET/POST para impedir respuestas
+fuera de orden, consulta cada 200 ms y acumula eventos desde `totalEventos`. Si el contador
+decrece, recupera desde cero. Respeta las ediciones pendientes de controles y solo envía
+los campos modificados. Se verificaron RR, E/S, anti-inanición, errores, pausa/reinicio,
+desconexión y diseño adaptable a 1280 px y móvil.
+
+`gestor.ps1` y `scripts/probar-cli.ps1` están en UTF-8 con BOM. La CLI usa `Invoke-WebRequest`
+con plazo de 2 s, lee UTF-8 explícitamente y maneja salidas 0–5 según el contrato. Para evitar
+retrasos de resolución IPv6 y proxies de Internet al consultar el HttpServer local del JDK,
+conecta por loopback IPv4; los mensajes conservan la dirección `localhost` del contrato.
+La batería reserva 18080, usa `Measure-Command` para las consultas y cierra Java en `finally`.
 
 El controlador acepta `(Supplier<Escenario>, false)` para pruebas sin reloj y ofrece
 `avanzarManual()` en modo EN_CURSO. El constructor habitual activa el daemon
