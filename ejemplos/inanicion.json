@@ -1,0 +1,59 @@
+{
+  "configuracion": {
+    "memoriaTotal": 100,
+    "quantum": 1,
+    "maxAdelantamientos": 5,
+    "politicaMemoria": "BEST_FIT",
+    "planificador": "ROUND_ROBIN"
+  },
+  "procesos": [
+    {
+      "id": "O",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 30,
+      "memoria": 30
+    },
+    {
+      "id": "G",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 80
+    },
+    {
+      "id": "S1",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 10
+    },
+    {
+      "id": "S2",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 10
+    },
+    {
+      "id": "S3",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 10
+    },
+    {
+      "id": "S4",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 10
+    },
+    {
+      "id": "S5",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 10
+    },
+    {
+      "id": "S6",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 10
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "procesos": [
+    {
+      "id": "P1",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 5,
+      "memoria": 20,
+      "bloqueosES": [
+        {
+          "enQuantum": 5,
+          "duracion": 1
+        }
+      ]
+    }
+  ]
+}

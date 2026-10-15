@@ -1,0 +1,10 @@
+{
+  "procesos": [
+    {
+      "id": "P1",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 1,
+      "memoria": 1
+    }
+  ]
+}

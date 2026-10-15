@@ -1,0 +1,23 @@
+{
+  "configuracion": {
+    "memoriaTotal": 100,
+    "quantum": 2,
+    "maxAdelantamientos": 5,
+    "politicaMemoria": "BEST_FIT",
+    "planificador": "ROUND_ROBIN"
+  },
+  "procesos": [
+    {
+      "id": "P1",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 4,
+      "memoria": 30
+    },
+    {
+      "id": "P2",
+      "tiempoLlegada": 1,
+      "tiempoRafaga": 3,
+      "memoria": 20
+    }
+  ]
+}

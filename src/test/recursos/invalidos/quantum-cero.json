@@ -1,0 +1,13 @@
+{
+  "configuracion": {
+    "quantum": 0
+  },
+  "procesos": [
+    {
+      "id": "P1",
+      "tiempoLlegada": 0,
+      "tiempoRafaga": 5,
+      "memoria": 20
+    }
+  ]
+}

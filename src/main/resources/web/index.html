@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Gestor de procesos · Simulador</title>
+  <link rel="stylesheet" href="/estilos.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="cabecera">
+    <div class="marca"><span class="simbolo" aria-hidden="true">GP</span><div><p class="sobretitulo">LABORATORIO DE SISTEMAS OPERATIVOS</p><h1>Gestor de procesos</h1></div></div>
+    <div class="estado-general"><span id="conexion" class="conexion">Conectando…</span><span id="modo" class="modo" data-modo="DETENIDA">DETENIDA</span><div class="reloj"><span>Instante actual</span><strong id="instante">0</strong><span>ticks</span></div></div>
+  </header>
+  <main>
+    <section class="panel controles" aria-labelledby="titulo-controles">
+      <div class="titulo-panel"><h2 id="titulo-controles">Control de la simulación</h2><span class="planificador">Planificador <strong id="planificador">—</strong></span></div>
+      <div class="fila-controles">
+        <div class="acciones"><button id="iniciar" class="primario" type="button" disabled>Iniciar</button><button id="pausar" type="button" disabled>Pausar</button><button id="reiniciar" type="button" disabled>Reiniciar</button></div>
+        <div class="control-velocidad"><label for="velocidad">Intervalo por tick <output id="valor-velocidad" for="velocidad">500 ms</output></label><input id="velocidad" type="range" min="50" max="2000" step="10" value="500" disabled><div class="extremos"><span>Más rápido · 50 ms</span><span>Más lento · 2000 ms</span></div></div>
+        <form id="configuracion" class="configuracion">
+          <div><label for="quantum">Quantum <span>(ticks)</span></label><input id="quantum" name="quantum" type="number" min="1" max="2147483647" step="1" value="1" required disabled></div>
+          <div><label for="memoria-total">RAM total <span>(MB)</span></label><input id="memoria-total" name="memoriaTotal" type="number" min="1" max="2147483647" step="1" value="1024" required disabled></div>
+          <div><label for="politica">Política de memoria</label><select id="politica" name="politicaMemoria" disabled><option value="BEST_FIT">Best-Fit</option><option value="FIRST_FIT">First-Fit</option></select></div>
+          <button id="aplicar" type="submit" disabled>Aplicar</button>
+        </form>
+      </div>
+      <p class="ayuda">El quantum se aplica desde el siguiente despacho. La RAM y la política se editan antes de iniciar o después de reiniciar.</p>
+      <p id="mensaje" class="mensaje" role="status" aria-live="polite" hidden></p>
+      <p id="aviso" class="mensaje aviso" role="status" aria-live="polite" hidden></p>
+    </section>
+    <section aria-labelledby="titulo-colas">
+      <div class="titulo-seccion"><h2 id="titulo-colas">Estado de los procesos</h2><p>Round Robin con E/S en paralelo</p></div>
+      <div class="colas">
+        <article class="panel cola"><div class="titulo-cola"><h3>Nuevos / Espera de RAM</h3><span id="cantidad-nuevos" class="cantidad">0</span></div><ol id="nuevos" class="lista-procesos"><li class="vacio">Sin procesos en espera</li></ol></article>
+        <article class="panel cola"><div class="titulo-cola"><h3>Listos <span class="detalle-titulo">FIFO</span></h3><span id="cantidad-listos" class="cantidad">0</span></div><ol id="listos" class="lista-procesos"><li class="vacio">Sin procesos listos</li></ol></article>
+        <article class="panel cola cola-cpu"><div class="titulo-cola"><h3>CPU en ejecución</h3><span id="cantidad-ejecucion" class="cantidad">0</span></div><div id="ejecucion" class="contenido-cpu"><p class="vacio">CPU ociosa</p></div></article>
+        <article class="panel cola"><div class="titulo-cola"><h3>Bloqueados por E/S</h3><span id="cantidad-bloqueados" class="cantidad">0</span></div><ol id="bloqueados" class="lista-procesos"><li class="vacio">Sin bloqueos de E/S</li></ol></article>
+        <article class="panel cola"><div class="titulo-cola"><h3>Terminados</h3><span id="cantidad-terminados" class="cantidad">0</span></div><ol id="terminados" class="lista-procesos"><li class="vacio">Ningún proceso ha terminado</li></ol></article>
+      </div>
+    </section>
+    <section class="panel" aria-labelledby="titulo-memoria">
+      <div class="titulo-panel"><h2 id="titulo-memoria">Memoria RAM <span id="politica-vigente" class="detalle-titulo">Best-Fit</span></h2><span class="leyenda-hueco"><i aria-hidden="true"></i> Hueco libre</span></div>
+      <dl class="resumen-memoria"><div><dt>Capacidad</dt><dd id="ram-capacidad">—</dd></div><div><dt>Memoria libre</dt><dd id="ram-libre">—</dd></div><div><dt>Mayor hueco contiguo</dt><dd id="ram-mayor-hueco">—</dd></div><div><dt>Fragmentación externa</dt><dd id="ram-fragmentacion">—</dd></div></dl>
+      <div class="desplazamiento"><div id="mapa-memoria" class="mapa-memoria" role="img" aria-label="Mapa de memoria sin cargar"></div></div>
+      <ul id="detalle-memoria" class="detalle-memoria" aria-label="Bloques de memoria y sus direcciones"></ul>
+    </section>
+    <section class="panel" aria-labelledby="titulo-gantt">
+      <div class="titulo-panel"><h2 id="titulo-gantt">Diagrama de Gantt</h2><span class="detalle-titulo">Un tramo por turno · intervalos [inicio, fin)</span></div>
+      <p id="gantt-vacio" class="vacio">Inicia la simulación para ver la línea de tiempo.</p>
+      <div id="desplazamiento-gantt" class="desplazamiento" tabindex="0" aria-label="Línea de tiempo desplazable"><div id="linea-tiempo" class="linea-tiempo"><div id="gantt" class="gantt" role="img" aria-label="Diagrama de Gantt sin turnos"></div><div id="escala-gantt" class="escala-gantt" aria-hidden="true"></div></div></div>
+      <div id="leyenda-procesos" class="leyenda-procesos" aria-label="Colores de los procesos"></div>
+    </section>
+    <div class="zona-inferior">
+      <section class="panel metricas" aria-labelledby="titulo-metricas">
+        <div class="titulo-panel"><h2 id="titulo-metricas">Métricas</h2><span id="resumen-terminados" class="detalle-titulo">0 procesos terminados</span></div>
+        <dl class="resumen-metricas"><div><dt>Espera promedio</dt><dd id="espera-promedio">—</dd></div><div><dt>Retorno promedio</dt><dd id="retorno-promedio">—</dd></div><div><dt>Utilización de CPU</dt><dd id="utilizacion-cpu">—</dd></div></dl>
+        <div class="desplazamiento"><table><caption>Tiempos por proceso, expresados en ticks</caption><thead><tr><th scope="col">Proceso</th><th scope="col">Llegada</th><th scope="col">Ráfaga</th><th scope="col">Finalización</th><th scope="col">Retorno</th><th scope="col">Espera</th><th scope="col">E/S</th></tr></thead><tbody id="tabla-metricas"></tbody></table></div>
+        <p class="ayuda">Retorno = finalización − llegada. Espera = retorno − ráfaga − E/S. Los promedios incluyen solo procesos terminados.</p>
+      </section>
+      <section class="panel panel-bitacora" aria-labelledby="titulo-bitacora">
+        <div class="titulo-panel"><h2 id="titulo-bitacora">Bitácora</h2><span id="total-eventos" class="cantidad">0 eventos</span></div>
+        <p class="ayuda">Más recientes arriba · se conservan todos los eventos.</p>
+        <ol id="bitacora" class="bitacora"><li class="vacio">Aún no hay eventos.</li></ol>
+      </section>
+    </div>
+  </main>
+  <footer>Simulación de procesos y memoria · Todos los tiempos se expresan en ticks.</footer>
+  <noscript><p class="mensaje error">Activa JavaScript para visualizar y controlar el simulador.</p></noscript>
+</body>
+</html>
