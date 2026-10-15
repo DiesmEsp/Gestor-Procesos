@@ -248,4 +248,37 @@ public final class Motor {
     public Metricas metricas() {
         return Metricas.calcular(procesos, ticksCpuOcupada, instanteActual);
     }
+
+    /** Captura entre ticks; el contexto del reloj lo completa exclusivamente el controlador. */
+    public Instantanea instantanea() {
+        var nuevos = esperaMemoria.stream().map(proceso -> new Instantanea.ProcesoEnEspera(
+                proceso.definicion().id(), proceso.definicion().memoria(), proceso.adelantamientos(), esBloqueante(proceso))).toList();
+        var listos = new ArrayList<>(planificador.cola().stream().map(proceso -> proceso.definicion().id()).toList());
+        // La expropiación ya liberó la CPU, aunque su evento se registra tras llegadas y E/S del próximo tick.
+        if (expropiadoPendiente != null) listos.add(expropiadoPendiente.definicion().id());
+        var ejecucion = enEjecucion == null ? null : new Instantanea.ProcesoEnEjecucion(
+                enEjecucion.definicion().id(), enEjecucion.ticksQuantumUsados());
+        var enEsperaES = bloqueados.stream().map(proceso -> new Instantanea.ProcesoBloqueado(
+                proceso.definicion().id(), proceso.finBloqueo() - instanteActual)).toList();
+        var terminados = procesos.stream().filter(proceso -> proceso.estado() == EstadoProceso.TERMINADO)
+                .sorted(Comparator.comparingInt(Proceso::instanteFinalizacion))
+                .map(proceso -> proceso.definicion().id()).toList();
+        var resumenes = procesos.stream().map(proceso -> {
+            var definicion = proceso.definicion();
+            var bloque = proceso.tieneMemoria() ? new Instantanea.BloqueMemoria(proceso.baseBloque(),
+                    proceso.baseBloque() + proceso.tamanoBloque() - 1, proceso.tamanoBloque(), definicion.id()) : null;
+            Integer restanteES = proceso.estado() == EstadoProceso.BLOQUEADO ? proceso.finBloqueo() - instanteActual : null;
+            EstadoProceso estado = proceso == expropiadoPendiente ? EstadoProceso.LISTO : proceso.estado();
+            return new Instantanea.ResumenProceso(definicion.id(), estado, definicion.tiempoLlegada(),
+                    definicion.tiempoRafaga(), proceso.ticksConsumidos(), proceso.ticksRestantes(), definicion.memoria(),
+                    definicion.prioridad(), bloque, proceso.tiempoEspera(), proceso.ticksES(), proceso.adelantamientos(),
+                    esBloqueante(proceso), restanteES, proceso.instanteFinalizacion(), proceso.tiempoRetorno());
+        }).toList();
+        var memoria = new Instantanea.EstadoMemoria(mapaMemoria.total(), mapaMemoria.memoriaLibre(),
+                mapaMemoria.mayorHueco(), mapaMemoria.fragmentacionExterna(), mapaMemoria.bloques().stream()
+                .map(bloque -> new Instantanea.BloqueMemoria(bloque.base(), bloque.limite(), bloque.tamano(), bloque.idProceso())).toList());
+        return new Instantanea(instanteActual, null, configuracion, 0,
+                new Instantanea.Colas(nuevos, listos, ejecucion, enEsperaES, terminados), resumenes, memoria,
+                gantt.tramos(), bitacora.eventos(), metricas(), null);
+    }
 }

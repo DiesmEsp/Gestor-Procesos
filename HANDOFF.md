@@ -5,13 +5,28 @@ variable con Best-Fit) para Sistemas Operativos, con dashboard web y CLI PowerSh
 
 ## Estado actual
 
-- **Fases completadas**: diseño, infraestructura, fundaciones, US1/US2 y carga JSON de US5 (**T001–T044**).
-  Al núcleo se añaden lector JSON propio, validación acumulada, advertencias, arranque informativo
-  y siete ejemplos. `config.json` raíz contiene el escenario didáctico de seis procesos.
-  `.\scripts\probar.ps1` reporta **119 pruebas, 0 fallidas** con JDK 21 en PowerShell 5.1 y 7.
-  `.\scripts\iniciar.ps1` valida y muestra el resumen; el arranque HTTP corresponde a T055.
-- **Siguiente paso**: tarea **T045**, pruebas del escritor JSON para la fase web de US3, de
+- **Fases completadas**: diseño, infraestructura, fundaciones, US1/US2, carga JSON de US5 y
+  backend HTTP de US3 (**T001–T055**). Hay escritor JSON propio, instantáneas inmutables,
+  controlador con reloj y API local. `config.json` raíz contiene el escenario didáctico de
+  seis procesos. `.\scripts\probar.ps1` reporta **152 pruebas, 0 fallidas** con JDK 21 en
+  PowerShell 5.1 y 7. `.\scripts\iniciar.ps1` valida, informa el resumen y arranca el servidor.
+  `/` sirve una página mínima; el dashboard todavía está pendiente.
+- **Siguiente paso**: tarea **T056**, dashboard HTML, seguida por CSS y JavaScript (T057–T058), de
   [`specs/001-simulador-procesos-memoria/tasks.md`](specs/001-simulador-procesos-memoria/tasks.md).
+
+El controlador acepta `(Supplier<Escenario>, false)` para pruebas sin reloj y ofrece
+`avanzarManual()` en modo EN_CURSO. El constructor habitual activa el daemon
+`reloj-simulacion`. El reloj, las acciones y las capturas comparten un monitor. La prueba
+SC-006 compara una ejecución manual con el reloj real, dos pausas y cambios de velocidad.
+Al consultar una instantánea, el expropiado pendiente figura como Listo y la CPU está libre;
+el registro de expropiación mantiene el orden del siguiente tick especificado por el motor.
+
+`Principal` compone el proveedor que relee el archivo al reiniciar. Solo las modificaciones
+explícitas de quantum, RAM y política se conservan sobre el archivo nuevo; si la RAM no basta
+se usa la del archivo con aviso. Un error de relectura conserva el último escenario válido.
+La API valida todos los campos antes de aplicar cambios y devuelve errores JSON en español.
+Se verificaron puerto ocupado, loopback, consultas concurrentes, bitácora incremental y el
+jar con sus recursos, sin infracciones de capas ni dependencias externas.
 
 ## Documentos clave (leer en este orden)
 

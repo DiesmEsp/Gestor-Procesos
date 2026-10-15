@@ -2,10 +2,14 @@ package gestor;
 
 import gestor.entrada.ErrorConfiguracion;
 import gestor.entrada.LectorEscenario;
+import gestor.interfaz.web.ServidorWeb;
+import gestor.modelo.Escenario;
+import gestor.motor.ControladorSimulacion;
+import java.io.IOException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 
-/** Punto de entrada: argumentos, validación del escenario y resumen de carga. */
+/** Punto de entrada: argumentos, carga del escenario y arranque del servidor local. */
 public final class Principal {
     private Principal() {
     }
@@ -21,23 +25,39 @@ public final class Principal {
             return;
         }
 
-        LectorEscenario lector = new LectorEscenario();
+        ControladorSimulacion controlador = null;
         try {
-            var escenario = lector.leer(opciones.rutaConfiguracion());
-            imprimirAdvertencias(lector);
-            var configuracion = escenario.configuracion();
-            System.out.println("Escenario cargado: " + escenario.procesos().size() + " procesos, RAM "
+            controlador = new ControladorSimulacion(() -> cargar(opciones.rutaConfiguracion()));
+            var estado = controlador.instantanea();
+            var configuracion = estado.configuracion();
+            System.out.println("Escenario cargado: " + estado.procesos().size() + " procesos, RAM "
                     + configuracion.memoriaTotal() + " MB, quantum " + configuracion.quantum()
                     + ", política " + configuracion.politicaMemoria().etiqueta()
                     + ", planificador " + configuracion.planificador().etiqueta());
-            // El servidor y el uso del puerto validado se incorporan en T055.
+            var servidor = new ServidorWeb(controlador, opciones.puerto());
+            var controlAlCerrar = controlador;
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                controlAlCerrar.detener();
+                servidor.detener();
+            }, "cierre-simulador"));
+            servidor.iniciar();
+            System.out.println("Simulador disponible en http://localhost:" + servidor.puerto());
         } catch (ErrorConfiguracion excepcion) {
-            imprimirAdvertencias(lector);
             for (String error : excepcion.errores()) {
                 System.err.println(error);
             }
             System.exit(1);
+        } catch (IOException excepcion) {
+            if (controlador != null) controlador.detener();
+            System.err.println("Error al iniciar el servidor: " + excepcion.getMessage());
+            System.exit(1);
         }
+    }
+
+    private static Escenario cargar(Path ruta) {
+        var lector = new LectorEscenario();
+        try { return lector.leer(ruta); }
+        finally { imprimirAdvertencias(lector); }
     }
 
     private static void imprimirAdvertencias(LectorEscenario lector) {
